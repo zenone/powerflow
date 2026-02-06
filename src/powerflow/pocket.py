@@ -8,9 +8,8 @@ from typing import Optional
 from .models import ActionItem, Recording
 
 
-# Base URL can be overridden via environment variable
-# Default is a placeholder - user must set POCKET_API_URL if default doesn't work
-DEFAULT_BASE_URL = "https://api.heypocket.com"
+# Base URL from official docs: https://docs.heypocketai.com/docs/api
+DEFAULT_BASE_URL = "https://public.heypocketai.com/api/v1"
 BASE_URL = os.getenv("POCKET_API_URL", DEFAULT_BASE_URL)
 
 
