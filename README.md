@@ -10,7 +10,7 @@
 
 ## 🎯 What It Does
 
-You talk to [Pocket AI](https://heypocket.ai). It creates action items. Power-Flow puts them in your Notion inbox — with zero manual copy-paste.
+You talk to [Pocket AI](https://heypocket.com/). It creates action items. Power-Flow puts them in your Notion inbox — with zero manual copy-paste.
 
 ```
 ┌─────────────┐      ┌─────────────┐      ┌─────────────┐
@@ -364,7 +364,7 @@ MIT — do whatever you want with it.
 ## 🙏 Credits
 
 Built with:
-- [Pocket AI](https://heypocket.ai) — The AI that captures your thoughts
+- [Pocket AI](https://heypocket.com/) — The AI that captures your thoughts
 - [Notion API](https://developers.notion.com/) — The API that powers your workspace
 - Coffee ☕
 
