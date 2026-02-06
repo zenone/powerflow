@@ -20,6 +20,8 @@ class ActionItem:
     recording_title: Optional[str] = None
     recording_url: Optional[str] = None
     created_at: Optional[datetime] = None
+    duration_seconds: Optional[int] = None  # Recording duration
+    tags: list[str] = field(default_factory=list)  # From recording
 
     def to_notion_properties(self, property_map: dict) -> dict:
         """Convert to Notion page properties based on mapping."""
@@ -56,6 +58,71 @@ class ActionItem:
             props[property_map["source_url"]] = {"url": self.recording_url}
 
         return props
+
+    def to_notion_children(self) -> list[dict]:
+        """Build the page body blocks for rich visual content.
+        
+        Structure:
+        1. Context callout (priority-styled with icon and color)
+        2. Divider
+        3. Source details toggle (collapsed by default)
+           - Recording title
+           - Duration
+           - Created date
+           - Link to Pocket
+        """
+        from .blocks import (
+            create_callout,
+            create_divider,
+            create_toggle,
+            create_bullet,
+            create_paragraph,
+            get_priority_style,
+            format_duration,
+        )
+        
+        children = []
+        
+        # 1. Context callout (priority-styled)
+        if self.context:
+            style = get_priority_style(self.priority)
+            children.append(
+                create_callout(
+                    self.context,
+                    icon=style["icon"],
+                    color=style["color"]
+                )
+            )
+        
+        # Only add remaining blocks if we have source details
+        source_children = []
+        
+        if self.recording_title:
+            source_children.append(create_bullet(self.recording_title, "Recording"))
+        
+        if self.duration_seconds:
+            duration_str = format_duration(self.duration_seconds)
+            source_children.append(create_bullet(duration_str, "Duration"))
+        
+        if self.created_at:
+            date_str = self.created_at.strftime("%b %d, %Y at %I:%M %p")
+            source_children.append(create_bullet(date_str, "Created"))
+        
+        if self.recording_url:
+            source_children.append(
+                create_paragraph(
+                    "🔗 Open in Pocket AI",
+                    link=self.recording_url,
+                    color="blue"
+                )
+            )
+        
+        # Add divider and toggle if we have source details
+        if source_children:
+            children.append(create_divider())
+            children.append(create_toggle("Source Details", source_children))
+        
+        return children
 
 
 @dataclass

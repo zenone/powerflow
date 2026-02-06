@@ -97,12 +97,28 @@ class NotionClient:
         results = self.query_database(database_id, filter_obj, page_size=1)
         return len(results) > 0
 
-    def create_page(self, database_id: str, properties: dict) -> dict:
-        """Create a new page in the database."""
+    def create_page(
+        self,
+        database_id: str,
+        properties: dict,
+        children: list[dict] = None,
+    ) -> dict:
+        """Create a new page in the database with optional body content.
+        
+        Args:
+            database_id: Target database ID
+            properties: Page properties (database fields)
+            children: Optional list of block objects for page body content
+        
+        Returns:
+            Created page object
+        """
         payload = {
             "parent": {"database_id": database_id},
             "properties": properties,
         }
+        if children:
+            payload["children"] = children
         return self._request("POST", "/pages", json=payload)
 
     def create_property(

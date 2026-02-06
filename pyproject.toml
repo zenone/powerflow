@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "powerflow"
-version = "0.1.0"
+version = "0.2.0"
 description = "Sync Pocket AI action items and summaries to Notion"
 readme = "README.md"
 license = "MIT"

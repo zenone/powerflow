@@ -60,10 +60,11 @@ class SyncEngine:
                     result.skipped += 1
                     continue
 
-                # Create in Notion
+                # Create in Notion with rich body content
                 if not dry_run:
                     properties = item.to_notion_properties(property_map)
-                    self.notion.create_page(database_id, properties)
+                    children = item.to_notion_children()
+                    self.notion.create_page(database_id, properties, children)
 
                 result.created += 1
 

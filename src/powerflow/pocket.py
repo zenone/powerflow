@@ -79,6 +79,15 @@ class PocketClient:
 
         recording_title = recording.get("title") or recording.get("name")
         recording_created = recording.get("createdAt") or recording.get("created_at")
+        
+        # Get duration from recording metadata
+        duration_seconds = None
+        duration_raw = recording.get("duration") or recording.get("durationSeconds")
+        if duration_raw:
+            try:
+                duration_seconds = int(duration_raw)
+            except (ValueError, TypeError):
+                pass
 
         for idx, action in enumerate(actions):
             # Generate unique pocket_id for deduplication
@@ -113,6 +122,7 @@ class PocketClient:
                 item_type=action.get("type"),
                 recording_title=recording_title,
                 created_at=created_at,
+                duration_seconds=duration_seconds,
             )
             items.append(item)
 
