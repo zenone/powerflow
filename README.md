@@ -102,13 +102,16 @@ That's it. Your action items are now in Notion. 🎉
 
 ### 📱 Pocket AI API Key
 
-1. Open the **Pocket AI** app on your device
-2. Go to **Settings** (gear icon)
-3. Tap **API Keys** or **Developer**
-4. Tap **Create API Key** or **Generate**
-5. Copy the key (starts with `pk_`)
+1. Open the **Pocket AI** app on your phone
+2. Tap **Settings** in the bottom navigation bar (gear icon, far right)
+3. Scroll down and tap **Developers**
+4. Tap **API Keys**
+5. Tap **Create Secret Key**
+6. Enter a name (optional) — something like `powerflow`
+7. Tap **Create**
+8. Copy the key (starts with `pk_`)
 
-> 💡 **Tip**: The key looks like `pk_live_abc123...`. Keep it secret!
+> 💡 **Tip**: The key looks like `pk_881a6107b...`. Keep it secret — don't share it or commit it to git!
 
 ### 🗂️ Notion API Key
 

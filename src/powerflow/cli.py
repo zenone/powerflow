@@ -84,7 +84,7 @@ def get_or_prompt_pocket_key(config: Config) -> Optional[str]:
     # Prompt user
     print()
     print("🔑 Pocket API Key Required")
-    print("   Get yours from: Pocket App → Settings → API Keys → Create")
+    print("   Get yours from: Pocket App → Settings → Developers → API Keys → Create Secret Key")
     print()
     try:
         key = input("   Enter your Pocket API key (pk_...): ").strip()
