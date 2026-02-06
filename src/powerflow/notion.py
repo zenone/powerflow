@@ -187,6 +187,8 @@ class NotionClient:
             property_config = {"date": {}}
         elif property_type == "checkbox":
             property_config = {"checkbox": {}}
+        elif property_type == "multi_select":
+            property_config = {"multi_select": {"options": []}}
         else:
             property_config = {"rich_text": {}}  # Default to rich_text
 

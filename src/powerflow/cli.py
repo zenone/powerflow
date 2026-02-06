@@ -359,6 +359,17 @@ def cmd_setup() -> int:
     if not source_field:
         to_create.append(("Source", "Source", "url"))
 
+    # Check for tags field (multi_select)
+    tags_field = None
+    for name in ["Tags", "Labels", "Categories"]:
+        if name in schema_names and schema_names[name] == "multi_select":
+            tags_field = name
+            existing_mappings.append(("Tags", name, "existing"))
+            break
+    
+    if not tags_field:
+        to_create.append(("Tags", "Tags", "multi_select"))
+
     # Display mapping
     print("Mapping Pocket → Notion:\n")
     for pocket_field, notion_field, _ in existing_mappings:
@@ -405,6 +416,7 @@ def cmd_setup() -> int:
         "pocket_id": "pocket_id",
         "Context": "context",
         "Source": "source_url",
+        "Tags": "tags",
     }
     
     for pocket_field, notion_field, _ in existing_mappings:
