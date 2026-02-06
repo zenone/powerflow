@@ -1,28 +1,49 @@
-# Project
+# Power-Flow
 
-## One‑liner
-What are we building?
+## One-liner
+
+Sync Pocket AI action items and summaries to Notion with smart deduplication.
 
 ## Users
-Who is this for?
 
-## Success criteria (v1)
-What does “done” mean?
+Pocket AI device owners who use Notion for task management.
 
-## Default 2026 constraints (edit as needed)
-- Security: secure-by-default, no secrets in git, least privilege
-- Testing: unit tests for new logic, integration tests for critical paths
-- API-first: business logic separated from UI; stable internal API surface
-- UI/UX: accessible (WCAG AA), responsive, fast first load
-- Maintainability: small diffs, clear naming, minimal dependencies
+## Success Criteria (v1)
 
-## Non-goals
-What are we explicitly not doing?
+- [ ] `powerflow setup` discovers Notion databases and configures mapping
+- [ ] `powerflow sync` pulls action items and creates Notion pages
+- [ ] Deduplication prevents duplicate entries on re-sync
+- [ ] Clear error messages for common issues (bad API key, no access, etc.)
+- [ ] Works on fresh clone with just API keys
 
-## Architecture sketch
-High-level components and data flow.
+## Constraints
 
-## Dev workflow
-- How to run:
-- How to test:
-- How to deploy:
+- Security: API keys in `.env` only, never in git
+- Testing: Unit tests for API clients, integration tests for sync
+- API-first: Clean separation between API clients and CLI
+- UX: Low friction setup (auto-discover, smart-map, confirm)
+
+## Non-Goals (v1)
+
+- Webhook receiver (push mode) — future enhancement
+- Two-way sync (Notion → Pocket)
+- Web UI
+- OAuth flow (internal integration token is sufficient)
+
+## Architecture
+
+```
+Pocket AI API → Power-Flow CLI → Notion API
+                     │
+                     ▼
+              ~/.powerflow/
+              config.json
+```
+
+**Pull mode only (v1)**: Run `powerflow sync` manually or via cron.
+
+## Dev Workflow
+
+- **Run**: `python -m powerflow sync`
+- **Test**: `pytest`
+- **Install**: `pip install -e .`
