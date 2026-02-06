@@ -25,6 +25,9 @@ class SyncEngine:
         """
         Sync action items from Pocket to Notion.
         
+        Uses incremental sync (only fetch new recordings) and batch dedup
+        (check multiple pocket_ids in one query) for efficiency.
+        
         Args:
             dry_run: If True, don't actually create pages
             
@@ -41,22 +44,34 @@ class SyncEngine:
         property_map = self.config.notion.property_map
         pocket_id_prop = property_map.get("pocket_id", "Inbox ID")
 
-        # Fetch all action items from Pocket
+        # Get last sync timestamp for incremental sync
+        last_sync = getattr(self.config.pocket, 'last_sync', None)
+
+        # Fetch action items since last sync (or all if first sync)
         try:
-            action_items = self.pocket.fetch_all_action_items()
+            action_items = self.pocket.fetch_action_items_since(last_sync)
         except Exception as e:
             result.errors.append(f"Failed to fetch from Pocket: {e}")
+            return result
+
+        if not action_items:
+            return result
+
+        # Batch check which items already exist
+        pocket_ids = [item.pocket_id for item in action_items]
+        try:
+            existing_ids = self.notion.batch_check_existing_pocket_ids(
+                database_id, pocket_ids, pocket_id_prop
+            )
+        except Exception as e:
+            result.errors.append(f"Failed to check existing items: {e}")
             return result
 
         # Process each action item
         for item in action_items:
             try:
-                # Check for duplicate
-                exists = self.notion.page_exists_by_pocket_id(
-                    database_id, item.pocket_id, pocket_id_prop
-                )
-
-                if exists:
+                # Check for duplicate using batch result
+                if item.pocket_id in existing_ids:
                     result.skipped += 1
                     continue
 
@@ -73,7 +88,7 @@ class SyncEngine:
                 result.errors.append(f"Failed to sync '{item.label}': {e}")
 
         # Update last sync timestamp
-        if not dry_run and result.created > 0:
+        if not dry_run and (result.created > 0 or result.skipped > 0):
             self.config.update_last_sync()
 
         return result
@@ -86,15 +101,17 @@ class SyncEngine:
         database_id = self.config.notion.database_id
         property_map = self.config.notion.property_map
         pocket_id_prop = property_map.get("pocket_id", "Inbox ID")
+        last_sync = getattr(self.config.pocket, 'last_sync', None)
 
-        action_items = self.pocket.fetch_all_action_items()
-        pending = 0
+        action_items = self.pocket.fetch_action_items_since(last_sync)
+        
+        if not action_items:
+            return 0
 
-        for item in action_items:
-            exists = self.notion.page_exists_by_pocket_id(
-                database_id, item.pocket_id, pocket_id_prop
-            )
-            if not exists:
-                pending += 1
+        # Batch check existing
+        pocket_ids = [item.pocket_id for item in action_items]
+        existing_ids = self.notion.batch_check_existing_pocket_ids(
+            database_id, pocket_ids, pocket_id_prop
+        )
 
-        return pending
+        return len(action_items) - len(existing_ids)

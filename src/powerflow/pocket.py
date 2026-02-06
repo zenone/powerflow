@@ -53,6 +53,17 @@ class PocketClient:
 
     def fetch_all_action_items(self) -> list[ActionItem]:
         """Fetch all action items from all recordings."""
+        return self.fetch_action_items_since(None)
+
+    def fetch_action_items_since(self, since: Optional[datetime]) -> list[ActionItem]:
+        """Fetch action items from recordings created after `since` timestamp.
+        
+        Args:
+            since: Only fetch recordings created after this time. If None, fetch all.
+            
+        Returns:
+            List of ActionItem objects from matching recordings.
+        """
         action_items = []
         recordings = self.get_recordings()
 
@@ -60,6 +71,17 @@ class PocketClient:
             recording_id = rec.get("id")
             if not recording_id:
                 continue
+
+            # Filter by created_at if since is provided
+            if since:
+                rec_created = rec.get("createdAt") or rec.get("created_at")
+                if rec_created:
+                    try:
+                        rec_time = datetime.fromisoformat(rec_created.replace("Z", "+00:00"))
+                        if rec_time <= since:
+                            continue  # Skip recordings before since
+                    except (ValueError, AttributeError):
+                        pass  # If can't parse, include it
 
             # Get full recording details
             full_rec = self.get_recording(recording_id)
@@ -88,6 +110,17 @@ class PocketClient:
                 duration_seconds = int(duration_raw)
             except (ValueError, TypeError):
                 pass
+        
+        # Extract tags from recording
+        recording_tags = []
+        tags_data = recording.get("tags") or []
+        for tag in tags_data:
+            if isinstance(tag, dict):
+                tag_name = tag.get("name") or tag.get("label")
+            else:
+                tag_name = str(tag)
+            if tag_name:
+                recording_tags.append(tag_name)
 
         for idx, action in enumerate(actions):
             # Generate unique pocket_id for deduplication
@@ -123,6 +156,7 @@ class PocketClient:
                 recording_title=recording_title,
                 created_at=created_at,
                 duration_seconds=duration_seconds,
+                tags=recording_tags,
             )
             items.append(item)
 

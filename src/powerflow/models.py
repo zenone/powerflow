@@ -57,6 +57,18 @@ class ActionItem:
         if self.recording_url and "source_url" in property_map:
             props[property_map["source_url"]] = {"url": self.recording_url}
 
+        # Tags (multi-select) — normalize and deduplicate
+        if self.tags and "tags" in property_map:
+            seen = set()
+            unique_tags = []
+            for tag in self.tags:
+                normalized = tag.strip().lower()
+                if normalized and normalized not in seen:
+                    seen.add(normalized)
+                    unique_tags.append({"name": tag.strip()})
+            if unique_tags:
+                props[property_map["tags"]] = {"multi_select": unique_tags}
+
         return props
 
     def to_notion_children(self) -> list[dict]:

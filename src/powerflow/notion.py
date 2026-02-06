@@ -97,6 +97,53 @@ class NotionClient:
         results = self.query_database(database_id, filter_obj, page_size=1)
         return len(results) > 0
 
+    def batch_check_existing_pocket_ids(
+        self,
+        database_id: str,
+        pocket_ids: list[str],
+        pocket_id_property: str = "Inbox ID",
+    ) -> set[str]:
+        """Check which pocket_ids already exist in the database.
+        
+        Uses OR filter to check multiple IDs in a single query.
+        Chunks large lists to stay within Notion's filter limits.
+        
+        Args:
+            database_id: Target database
+            pocket_ids: List of pocket_ids to check
+            pocket_id_property: Name of the property storing pocket_id
+            
+        Returns:
+            Set of pocket_ids that already exist in the database
+        """
+        if not pocket_ids:
+            return set()
+        
+        existing = set()
+        chunk_size = 100  # Notion OR filter limit
+        
+        for i in range(0, len(pocket_ids), chunk_size):
+            chunk = pocket_ids[i:i + chunk_size]
+            
+            # Build OR filter
+            filter_obj = {
+                "or": [
+                    {"property": pocket_id_property, "rich_text": {"equals": pid}}
+                    for pid in chunk
+                ]
+            }
+            
+            results = self.query_database(database_id, filter_obj)
+            
+            # Extract pocket_ids from results
+            for page in results:
+                prop = page.get("properties", {}).get(pocket_id_property, {})
+                rich_text = prop.get("rich_text", [])
+                if rich_text:
+                    existing.add(rich_text[0].get("plain_text", ""))
+        
+        return existing
+
     def create_page(
         self,
         database_id: str,
