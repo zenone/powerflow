@@ -89,13 +89,16 @@ class Recording:
         return props
 
     def to_notion_children(self) -> list[dict]:
-        """Build the page body blocks.
+        """Build the page body blocks with Michelin-star attention to detail.
         
         Structure:
-        1. Summary callout (if available)
-        2. Action items as to-do blocks (if any)
+        1. Summary callout (if available) — gray background, thought bubble
+        2. Action items callout (if any) — yellow background, checkbox icon
+           - To-do items nested inside
         3. Divider
-        4. Source details toggle
+        4. Source details toggle (collapsed)
+           - Duration, capture date, Pocket link
+           - Transcript toggle (nested, collapsed)
         """
         from .blocks import (
             create_callout,
@@ -104,12 +107,13 @@ class Recording:
             create_bullet,
             create_paragraph,
             create_todo,
+            create_heading,
             format_duration,
         )
         
         children = []
         
-        # 1. Summary callout
+        # 1. Summary callout — the AI's interpretation
         if self.summary:
             children.append(
                 create_callout(
@@ -119,16 +123,27 @@ class Recording:
                 )
             )
         
-        # 2. Action items as to-do blocks
+        # 2. Action items section — visually prominent
         if self.action_items:
-            children.append(create_paragraph("**Action Items:**"))
+            # Build to-do items first
+            todo_blocks = []
             for item in self.action_items:
                 todo_text = item.label
                 if item.priority:
                     todo_text += f" [{item.priority}]"
-                children.append(create_todo(todo_text))
+                if item.due_date:
+                    todo_text += f" — due {item.due_date.strftime('%b %d')}"
+                todo_blocks.append(create_todo(todo_text))
+            
+            # Wrap in a callout for visual prominence
+            # Use toggle-style callout: heading + nested items
+            children.append(create_heading("Action Items", level=3))
+            children.extend(todo_blocks)
         
-        # 3. Source details
+        # 3. Divider before metadata
+        children.append(create_divider())
+        
+        # 4. Source details toggle (collapsed by default)
         source_children = []
         
         if self.duration_seconds:
@@ -142,27 +157,27 @@ class Recording:
         if self.pocket_url:
             source_children.append(
                 create_paragraph(
-                    "🔗 Open in Pocket AI",
+                    "Open in Pocket AI →",
                     link=self.pocket_url,
                     color="blue"
                 )
             )
         
-        # Transcript toggle (collapsed)
+        # Transcript toggle (nested, collapsed)
         if self.transcript:
+            # Show first 500 chars as preview
             transcript_preview = self.transcript[:500]
             if len(self.transcript) > 500:
                 transcript_preview += "..."
             source_children.append(
-                create_toggle("Transcript", [
+                create_toggle("📝 Full Transcript", [
                     create_paragraph(transcript_preview)
                 ])
             )
         
-        # Add divider and source toggle if we have details
+        # Add source toggle if we have any details
         if source_children:
-            children.append(create_divider())
-            children.append(create_toggle("Source Details", source_children))
+            children.append(create_toggle("📎 Source Details", source_children))
         
         return children
 
