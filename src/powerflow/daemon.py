@@ -32,6 +32,8 @@ STATE_FILE = CONFIG_DIR / "daemon_state.json"
 
 # Default interval
 DEFAULT_INTERVAL_MINUTES = 15
+RETRY_DELAY_SECONDS = 60  # Retry failed syncs after 1 minute
+MAX_RETRIES = 2
 
 
 def parse_interval(interval_str: str) -> int:
@@ -82,6 +84,27 @@ def load_state() -> dict:
         except (json.JSONDecodeError, IOError):
             pass
     return {}
+
+
+def send_notification(title: str, message: str) -> None:
+    """
+    Send a desktop notification (macOS).
+    
+    Fails silently on other platforms or if notification fails.
+    """
+    if sys.platform != "darwin":
+        return
+    
+    try:
+        import subprocess
+        script = f'display notification "{message}" with title "{title}"'
+        subprocess.run(
+            ["osascript", "-e", script],
+            capture_output=True,
+            timeout=5
+        )
+    except Exception:
+        pass  # Notifications are best-effort
 
 
 def is_running() -> tuple[bool, Optional[int]]:
@@ -183,34 +206,66 @@ class PowerFlowDaemon:
             "last_result": None,
         })
         
+        # Send startup notification
+        send_notification(
+            "Power-Flow Started",
+            f"Syncing every {self.interval_minutes} minutes"
+        )
+        
+        consecutive_failures = 0
+        
         try:
             while self.running:
-                # Perform sync
+                # Perform sync with retry logic
                 self.logger.info("Starting sync...")
                 start_time = time.time()
                 result = self._do_sync()
                 duration = time.time() - start_time
                 
-                # Log result
+                # Handle result
                 if "error" in result:
+                    consecutive_failures += 1
                     self.logger.error(f"Sync failed: {result['error']}")
+                    
+                    # Retry logic: if failed, retry sooner (up to MAX_RETRIES)
+                    if consecutive_failures <= MAX_RETRIES:
+                        self.logger.info(f"Will retry in {RETRY_DELAY_SECONDS}s (attempt {consecutive_failures}/{MAX_RETRIES})")
+                        wait_seconds = RETRY_DELAY_SECONDS
+                    else:
+                        self.logger.warning(f"Max retries reached, waiting for next interval")
+                        wait_seconds = self.interval_minutes * 60
+                        # Notify on persistent failure
+                        send_notification(
+                            "Power-Flow Sync Failed",
+                            f"Check logs: {LOG_FILE}"
+                        )
                 else:
+                    consecutive_failures = 0  # Reset on success
                     self.logger.info(
                         f"Sync complete in {duration:.1f}s: "
                         f"created={result['created']}, "
                         f"skipped={result['skipped']}, "
                         f"failed={result['failed']}"
                     )
+                    
+                    # Notify on new items (only if something was created)
+                    if result.get("created", 0) > 0:
+                        send_notification(
+                            "Power-Flow Synced",
+                            f"{result['created']} new items added to Notion"
+                        )
+                    
+                    wait_seconds = self.interval_minutes * 60
                 
                 # Update state
                 state = load_state()
                 state["last_sync"] = datetime.now().isoformat()
                 state["last_result"] = result
-                state["next_sync"] = (datetime.now() + timedelta(minutes=self.interval_minutes)).isoformat()
+                state["consecutive_failures"] = consecutive_failures
+                state["next_sync"] = (datetime.now() + timedelta(seconds=wait_seconds)).isoformat()
                 save_state(state)
                 
                 # Wait for next interval (check every 10s for shutdown signal)
-                wait_seconds = self.interval_minutes * 60
                 waited = 0
                 while waited < wait_seconds and self.running:
                     time.sleep(min(10, wait_seconds - waited))

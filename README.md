@@ -225,13 +225,21 @@ powerflow daemon uninstall
 
 > 💡 **Tip**: Pocket recordings only happen when you talk to it, so frequent polling rarely finds new items. 15 minutes is the sweet spot for most people.
 
+### Smart Features
+
+The daemon isn't just a dumb timer — it's smart:
+
+- **🔄 Retry on failure** — If sync fails, retries after 1 minute (up to 2 times) before waiting for next interval
+- **🔔 Desktop notifications** (macOS) — Get notified when new items sync
+- **📊 State tracking** — Tracks consecutive failures, last result, next sync time
+
 ### Daemon Files
 
 | File | Purpose |
 |------|---------|
 | `~/.powerflow/daemon.pid` | Process ID (prevents duplicates) |
 | `~/.powerflow/daemon.log` | Sync logs |
-| `~/.powerflow/daemon_state.json` | Last sync time, result |
+| `~/.powerflow/daemon_state.json` | Last sync time, result, failures |
 
 ---
 
