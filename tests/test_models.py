@@ -202,3 +202,47 @@ class TestSyncResult:
         assert "Created: 5" in str(result)
         assert "Skipped: 3" in str(result)
         assert "Failed: 2" in str(result)
+
+
+class TestSummaryCompletion:
+    """Tests for is_summary_complete property."""
+
+    def test_complete_with_summary(self):
+        """Recording with summary is complete."""
+        rec = Recording(id="1", summary="This is a summary")
+        assert rec.is_summary_complete is True
+
+    def test_complete_with_action_items(self):
+        """Recording with action items is complete."""
+        rec = Recording(id="1", action_items=[ActionItem(label="Do something")])
+        assert rec.is_summary_complete is True
+
+    def test_complete_with_mind_map(self):
+        """Recording with mind map nodes is complete."""
+        rec = Recording(id="1", mind_map=[{"node_id": "1", "title": "Root"}])
+        assert rec.is_summary_complete is True
+
+    def test_incomplete_without_ai_content(self):
+        """Recording without AI content is incomplete (still processing)."""
+        rec = Recording(id="1", title="Just title")
+        assert rec.is_summary_complete is False
+
+    def test_incomplete_with_empty_summary(self):
+        """Recording with empty/whitespace summary is incomplete."""
+        rec = Recording(id="1", summary="   ")
+        assert rec.is_summary_complete is False
+
+    def test_incomplete_with_empty_lists(self):
+        """Recording with empty action_items and mind_map is incomplete."""
+        rec = Recording(id="1", action_items=[], mind_map=[])
+        assert rec.is_summary_complete is False
+
+    def test_complete_with_multiple_indicators(self):
+        """Recording with multiple AI content is complete."""
+        rec = Recording(
+            id="1",
+            summary="Summary text",
+            action_items=[ActionItem(label="Task")],
+            mind_map=[{"node_id": "1", "title": "Root"}]
+        )
+        assert rec.is_summary_complete is True

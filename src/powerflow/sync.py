@@ -93,6 +93,13 @@ class SyncEngine:
                     result.skipped += 1
                     continue
 
+                # Check if AI summary processing has completed
+                # This prevents syncing recordings that Pocket is still processing
+                # They will be picked up on the next sync cycle
+                if not recording.is_summary_complete:
+                    result.pending += 1
+                    continue
+
                 # Create in Notion with rich body content and icon
                 if not dry_run:
                     properties = recording.to_notion_properties(property_map)
@@ -113,7 +120,12 @@ class SyncEngine:
         return result
 
     def get_pending_count(self) -> int:
-        """Get count of recordings that would be synced (not yet in Notion)."""
+        """Get count of recordings that would be synced (not yet in Notion).
+        
+        Only counts recordings that:
+        1. Don't already exist in Notion (dedup check)
+        2. Have completed AI processing (summary check)
+        """
         if not self.config.is_configured:
             return 0
 
@@ -139,4 +151,9 @@ class SyncEngine:
         except Exception:
             return len(recordings)  # Assume all are new if check fails
 
-        return len(recordings) - len(existing_ids)
+        # Count only recordings that are both new AND have completed AI processing
+        ready_count = sum(
+            1 for rec in recordings
+            if rec.pocket_id not in existing_ids and rec.is_summary_complete
+        )
+        return ready_count

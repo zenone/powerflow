@@ -183,6 +183,7 @@ class PowerFlowDaemon:
             return {
                 "created": result.created,
                 "skipped": result.skipped,
+                "pending": result.pending,  # Still processing in Pocket
                 "failed": result.failed,
                 "errors": result.errors[:3] if result.errors else [],
             }
@@ -241,10 +242,12 @@ class PowerFlowDaemon:
                         )
                 else:
                     consecutive_failures = 0  # Reset on success
+                    pending_str = f", pending={result['pending']}" if result.get('pending', 0) > 0 else ""
                     self.logger.info(
                         f"Sync complete in {duration:.1f}s: "
                         f"created={result['created']}, "
-                        f"skipped={result['skipped']}, "
+                        f"skipped={result['skipped']}"
+                        f"{pending_str}, "
                         f"failed={result['failed']}"
                     )
                     

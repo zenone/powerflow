@@ -4,7 +4,7 @@
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/tests-87%20passed-brightgreen.svg)](#development)
+[![Tests](https://img.shields.io/badge/tests-94%20passed-brightgreen.svg)](#development)
 
 ---
 
@@ -66,6 +66,7 @@ Each recording becomes a beautifully formatted Notion page:
 - **🎨 Smart icons** — Tags auto-map to emojis (work → 💼, idea → 💡, etc.)
 - **🚀 Incremental** — Only fetches new recordings since last sync
 - **🧠 Smart dedup** — Never creates duplicates, even if you run it 100 times
+- **⏳ Summary completion check** — Waits for Pocket AI to finish processing before syncing
 - **🏷️ Tags sync** — Pocket tags → Notion multi-select
 - **⚡ Batch operations** — Efficient API usage (not N+1 queries)
 - **🔒 Secure** — API keys stay local, never leave your machine
@@ -378,6 +379,17 @@ Power-Flow maps Pocket fields to your existing Notion properties. If a property 
 1. Are there new recordings in Pocket? (Already-synced recordings are skipped)
 2. Run `powerflow sync --dry-run` to see what would sync
 3. Check `powerflow status` for pending count
+
+### "Pending" recordings in sync output
+
+**What it means**: Pocket AI is still processing the recording's summary/action items.
+
+Power-Flow waits for AI processing to complete before syncing. A recording is considered "ready" when it has:
+- A non-empty summary, OR
+- At least one action item, OR
+- Mind map nodes
+
+**This is intentional** — it prevents syncing incomplete data. Pending recordings will automatically sync on the next run once Pocket finishes processing (usually within 1-2 minutes).
 
 ---
 

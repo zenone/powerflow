@@ -42,7 +42,7 @@ class TestIncrementalSync:
         """Sync should update last_sync timestamp after successful sync."""
         mock_pocket = MagicMock()
         mock_pocket.fetch_recordings.return_value = [
-            Recording(id="1", title="Test"),
+            Recording(id="1", title="Test", summary="Test summary"),  # Summary makes it complete
         ]
         mock_notion = MagicMock()
         mock_notion.batch_check_existing_pocket_ids.return_value = set()
@@ -63,7 +63,7 @@ class TestIncrementalSync:
         """Dry run should not update last_sync."""
         mock_pocket = MagicMock()
         mock_pocket.fetch_recordings.return_value = [
-            Recording(id="1", title="Test"),
+            Recording(id="1", title="Test", summary="Test summary"),  # Summary makes it complete
         ]
         mock_notion = MagicMock()
         mock_notion.batch_check_existing_pocket_ids.return_value = set()
@@ -83,8 +83,8 @@ class TestIncrementalSync:
         """Should fetch all recordings when last_sync is None."""
         mock_pocket = MagicMock()
         mock_pocket.fetch_recordings.return_value = [
-            Recording(id="1", title="Old Recording"),
-            Recording(id="2", title="New Recording"),
+            Recording(id="1", title="Old Recording", summary="Summary 1"),  # Summary makes it complete
+            Recording(id="2", title="New Recording", summary="Summary 2"),
         ]
         mock_notion = MagicMock()
         mock_notion.batch_check_existing_pocket_ids.return_value = set()

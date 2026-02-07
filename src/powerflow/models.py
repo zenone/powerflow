@@ -58,6 +58,28 @@ class Recording:
     pocket_url: Optional[str] = None
 
     @property
+    def is_summary_complete(self) -> bool:
+        """Check if AI summary processing has completed.
+        
+        A recording is considered ready for sync when it has meaningful
+        AI-generated content. This prevents syncing recordings that are
+        still being processed by Pocket's AI.
+        
+        Returns True if ANY of these are present:
+        - Non-empty summary (markdown)
+        - At least one action item
+        - Mind map nodes
+        
+        Returns False if the recording has no AI-generated content,
+        indicating it's likely still processing.
+        """
+        has_summary = bool(self.summary and self.summary.strip())
+        has_actions = len(self.action_items) > 0
+        has_mind_map = len(self.mind_map) > 0
+        
+        return has_summary or has_actions or has_mind_map
+
+    @property
     def pocket_id(self) -> str:
         """Unique ID for deduplication."""
         return f"pocket:recording:{self.id}"
@@ -285,12 +307,18 @@ class SyncResult:
 
     created: int = 0
     skipped: int = 0  # Already exists (dedup)
+    pending: int = 0  # Summary not yet complete (will retry next sync)
     failed: int = 0
     errors: list[str] = field(default_factory=list)
 
     @property
     def total(self) -> int:
-        return self.created + self.skipped + self.failed
+        return self.created + self.skipped + self.pending + self.failed
 
     def __str__(self) -> str:
-        return f"Created: {self.created}, Skipped: {self.skipped}, Failed: {self.failed}"
+        parts = [f"Created: {self.created}", f"Skipped: {self.skipped}"]
+        if self.pending > 0:
+            parts.append(f"Pending: {self.pending}")
+        if self.failed > 0:
+            parts.append(f"Failed: {self.failed}")
+        return ", ".join(parts)

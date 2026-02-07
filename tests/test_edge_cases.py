@@ -178,9 +178,9 @@ class TestAPIErrors:
         """Sync should continue if one item fails to create."""
         mock_pocket = MagicMock()
         mock_pocket.fetch_recordings.return_value = [
-            Recording(id="1", title="Item 1"),
-            Recording(id="2", title="Item 2"),
-            Recording(id="3", title="Item 3"),
+            Recording(id="1", title="Item 1", summary="Summary 1"),  # Summary makes it complete
+            Recording(id="2", title="Item 2", summary="Summary 2"),
+            Recording(id="3", title="Item 3", summary="Summary 3"),
         ]
         mock_notion = MagicMock()
         mock_notion.batch_check_existing_pocket_ids.return_value = set()
@@ -216,9 +216,9 @@ class TestDryRun:
         """Dry run should report what WOULD be created."""
         mock_pocket = MagicMock()
         mock_pocket.fetch_recordings.return_value = [
-            Recording(id="1", title="New 1"),
-            Recording(id="2", title="New 2"),
-            Recording(id="3", title="Exists"),
+            Recording(id="1", title="New 1", summary="Summary 1"),  # Summary makes it complete
+            Recording(id="2", title="New 2", summary="Summary 2"),
+            Recording(id="3", title="Exists", summary="Summary 3"),
         ]
         mock_notion = MagicMock()
         mock_notion.batch_check_existing_pocket_ids.return_value = {"pocket:recording:3"}
