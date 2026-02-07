@@ -624,6 +624,59 @@ def cmd_config(action: str = "show") -> int:
 
 
 # =============================================================================
+# DAEMON COMMAND
+# =============================================================================
+
+def cmd_daemon(args: list[str]) -> int:
+    """
+    Manage background sync daemon.
+    
+    Subcommands:
+    - start [--interval Xm] [--foreground]: Start daemon
+    - stop: Stop daemon
+    - status: Show daemon status
+    - install [--interval Xm]: Install as system service
+    - uninstall: Remove system service
+    """
+    from . import daemon
+    
+    if not args:
+        print_error("Missing daemon subcommand")
+        print("   Use: powerflow daemon start|stop|status|install|uninstall")
+        return 1
+    
+    subcommand = args[0].lower()
+    
+    # Parse --interval flag
+    interval = daemon.DEFAULT_INTERVAL_MINUTES
+    for i, arg in enumerate(args):
+        if arg == "--interval" and i + 1 < len(args):
+            try:
+                interval = daemon.parse_interval(args[i + 1])
+            except ValueError:
+                print_error(f"Invalid interval: {args[i + 1]}")
+                print("   Examples: 5m, 15m, 30m, 1h")
+                return 1
+    
+    foreground = "--foreground" in args or "-f" in args
+    
+    if subcommand == "start":
+        return daemon.start_daemon(interval, foreground=foreground)
+    elif subcommand == "stop":
+        return daemon.stop_daemon()
+    elif subcommand == "status":
+        return daemon.daemon_status()
+    elif subcommand == "install":
+        return daemon.install_service(interval)
+    elif subcommand == "uninstall":
+        return daemon.uninstall_service()
+    else:
+        print_error(f"Unknown daemon subcommand: {subcommand}")
+        print("   Use: powerflow daemon start|stop|status|install|uninstall")
+        return 1
+
+
+# =============================================================================
 # MAIN ENTRY POINT
 # =============================================================================
 
@@ -649,6 +702,8 @@ def main(args: Optional[list[str]] = None) -> int:
         elif command == "config":
             action = args[1] if len(args) > 1 else "show"
             return cmd_config(action)
+        elif command == "daemon":
+            return cmd_daemon(args[1:])
         elif command in ["--help", "-h", "help"]:
             print_usage()
             return 0
@@ -682,6 +737,14 @@ Usage:
   powerflow status             Show sync status and pending count
   powerflow config show        Show current configuration
   powerflow config reset       Reset all configuration
+
+Automatic Sync:
+  powerflow daemon start             Start background sync (every 15 min)
+  powerflow daemon start --interval 5m   Custom interval (5m, 15m, 1h)
+  powerflow daemon stop              Stop background sync
+  powerflow daemon status            Check if daemon is running
+  powerflow daemon install           Install as system service (auto-start on boot)
+  powerflow daemon uninstall         Remove system service
 
 Options:
   -h, --help     Show this help

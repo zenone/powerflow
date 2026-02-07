@@ -177,6 +177,64 @@ powerflow setup
 
 ---
 
+## 🤖 Automatic Sync (Set and Forget)
+
+Don't want to run `powerflow sync` manually? Set it up to run automatically.
+
+### Option 1: Background Daemon
+
+```bash
+# Start syncing every 15 minutes (default)
+powerflow daemon start
+
+# Custom interval (5 minutes, 30 minutes, 1 hour)
+powerflow daemon start --interval 5m
+powerflow daemon start --interval 30m
+powerflow daemon start --interval 1h
+
+# Check status
+powerflow daemon status
+
+# Stop the daemon
+powerflow daemon stop
+```
+
+### Option 2: System Service (Auto-start on Boot)
+
+For true "set and forget" — syncs automatically even after restart:
+
+```bash
+# Install as system service (macOS launchd)
+powerflow daemon install
+
+# With custom interval
+powerflow daemon install --interval 30m
+
+# Remove service
+powerflow daemon uninstall
+```
+
+### Which Interval Should I Use?
+
+| Interval | Best For |
+|----------|----------|
+| **5 min** | Power users who want near-instant sync |
+| **15 min** | Most users (recommended default) |
+| **30 min** | Casual users, battery-conscious |
+| **1 hour** | Minimal resource usage |
+
+> 💡 **Tip**: Pocket recordings only happen when you talk to it, so frequent polling rarely finds new items. 15 minutes is the sweet spot for most people.
+
+### Daemon Files
+
+| File | Purpose |
+|------|---------|
+| `~/.powerflow/daemon.pid` | Process ID (prevents duplicates) |
+| `~/.powerflow/daemon.log` | Sync logs |
+| `~/.powerflow/daemon_state.json` | Last sync time, result |
+
+---
+
 ## ⚙️ How It Works
 
 ### Sync Flow
