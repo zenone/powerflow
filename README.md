@@ -441,4 +441,6 @@ Built with:
 
 <p align="center">
   Made with ⚡ by <a href="https://github.com/zenone">@zenone</a>
+  <br>
+  <a href="https://www.linkedin.com/in/zenone/">LinkedIn</a> · <a href="https://github.com/zenone">GitHub</a>
 </p>
