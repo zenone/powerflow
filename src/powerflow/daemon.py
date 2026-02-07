@@ -423,6 +423,10 @@ def generate_launchd_plist(interval_minutes: int = DEFAULT_INTERVAL_MINUTES) -> 
     import shutil
     powerflow_path = shutil.which("powerflow") or "/usr/local/bin/powerflow"
     
+    # Get API keys from environment (launchd doesn't inherit shell env)
+    POCKET_API_KEY = os.getenv("POCKET_API_KEY", "")
+    NOTION_API_KEY = os.getenv("NOTION_API_KEY", "")
+    
     return f"""<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -452,6 +456,10 @@ def generate_launchd_plist(interval_minutes: int = DEFAULT_INTERVAL_MINUTES) -> 
     <dict>
         <key>PATH</key>
         <string>/usr/local/bin:/usr/bin:/bin</string>
+        <key>POCKET_API_KEY</key>
+        <string>{POCKET_API_KEY}</string>
+        <key>NOTION_API_KEY</key>
+        <string>{NOTION_API_KEY}</string>
     </dict>
 </dict>
 </plist>
