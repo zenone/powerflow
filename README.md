@@ -41,9 +41,9 @@ Each recording becomes a beautifully formatted Notion page:
 │ ☐ Schedule follow-up with Sarah [Medium]                │
 │                                                          │
 │ ▸ 🧠 Mind Map                                           │  ← Hierarchical outline
-│     • Main Topic                                        │
-│       → Subtopic A                                      │
-│       → Subtopic B                                      │
+│     • **Main Topic**                                    │     (bold root)
+│     • ↳ Subtopic A                                      │     (indent + arrow)
+│     •     ↳ Detail 1                                    │
 │                                                          │
 │ ─────────────────────────────────────────────────────── │
 │                                                          │
@@ -306,7 +306,7 @@ Each Notion page includes:
 | **Title** | Recording title or first line of summary |
 | **Summary** | Pocket's summary parsed into native headings, bullets, bold |
 | **Action items** | To-do checkboxes with priority and due dates |
-| **Mind map toggle** | Hierarchical outline of topics (if available) |
+| **Mind map toggle** | Hierarchical outline with bold roots and ↳ indentation |
 | **Source toggle** | Duration, capture date, Pocket link, transcript |
 
 ---
