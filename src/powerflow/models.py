@@ -116,6 +116,72 @@ class Recording:
 
         return props
 
+    def _build_mind_map_tree(self) -> list[dict]:
+        """Build mind map blocks with visual hierarchy.
+        
+        Uses indentation markers since Notion API doesn't support
+        deeply nested children in page creation.
+        """
+        if not self.mind_map:
+            return []
+        
+        # Build parent-child relationships
+        children_map = {}  # parent_id -> [child_nodes]
+        roots = []
+        
+        for node in self.mind_map:
+            if not isinstance(node, dict):
+                continue
+            node_id = node.get("node_id")
+            parent_id = node.get("parent_node_id")
+            
+            if node_id == parent_id:
+                roots.append(node)
+            else:
+                if parent_id not in children_map:
+                    children_map[parent_id] = []
+                children_map[parent_id].append(node)
+        
+        blocks = []
+        
+        def add_node(node: dict, depth: int = 0):
+            """Add a node with visual depth indicator."""
+            title = node.get("title", "Untitled")
+            node_id = node.get("node_id")
+            
+            # Visual hierarchy: root is bold, children get indent markers
+            if depth == 0:
+                # Root node - bold
+                blocks.append({
+                    "type": "bulleted_list_item",
+                    "bulleted_list_item": {
+                        "rich_text": [{
+                            "type": "text",
+                            "text": {"content": title},
+                            "annotations": {"bold": True}
+                        }]
+                    }
+                })
+            else:
+                # Child nodes - indented with arrows
+                indent = "    " * (depth - 1)
+                prefix = f"{indent}↳ " if depth > 0 else ""
+                blocks.append({
+                    "type": "bulleted_list_item",
+                    "bulleted_list_item": {
+                        "rich_text": [{"type": "text", "text": {"content": f"{prefix}{title}"}}]
+                    }
+                })
+            
+            # Process children
+            for child in children_map.get(node_id, []):
+                add_node(child, depth + 1)
+        
+        for root in roots:
+            add_node(root, 0)
+        
+        return blocks
+
     def to_notion_children(self) -> list[dict]:
         """Build the page body blocks with Michelin-star attention to detail.
         
@@ -167,21 +233,9 @@ class Recording:
         
         # 3. Mind map outline (if available) — hierarchical breakdown
         if self.mind_map:
-            mind_map_children = []
-            for node in self.mind_map:
-                if isinstance(node, dict):
-                    node_title = node.get("title", "")
-                    if node_title:
-                        # Root nodes vs children (check if parent equals self)
-                        is_root = node.get("parent_node_id") == node.get("node_id")
-                        if is_root:
-                            mind_map_children.append(create_bullet(node_title, bold_prefix=None))
-                        else:
-                            # Indent child nodes
-                            mind_map_children.append(create_bullet(f"  → {node_title}", bold_prefix=None))
-            
-            if mind_map_children:
-                children.append(create_toggle("🧠 Mind Map", mind_map_children))
+            mind_map_blocks = self._build_mind_map_tree()
+            if mind_map_blocks:
+                children.append(create_toggle("🧠 Mind Map", mind_map_blocks))
         
         # 4. Divider before metadata
         children.append(create_divider())
