@@ -32,7 +32,7 @@ Each recording becomes a beautifully formatted Notion page:
 ├──────────────────────────────────────────────────────────┤
 │                                                          │
 │ 💭 ┌──────────────────────────────────────────────────┐ │
-│    │ Discussed new onboarding flow. Team prefers      │ │  ← AI Summary
+│    │ Discussed new onboarding flow. Team prefers      │ │  ← Summary
 │    │ progressive disclosure approach...               │ │
 │    └──────────────────────────────────────────────────┘ │
 │                                                          │
@@ -305,7 +305,7 @@ Each Notion page includes:
 |---------|---------|
 | **Icon** | Auto-assigned emoji based on tags |
 | **Title** | Recording title or first line of summary |
-| **Summary callout** | AI-generated summary with markdown formatting |
+| **Summary callout** | Pocket's summary with markdown formatting |
 | **Action items** | To-do checkboxes with priority and due dates |
 | **Mind map toggle** | Hierarchical outline of topics (if available) |
 | **Source toggle** | Duration, capture date, Pocket link, transcript |
@@ -415,6 +415,7 @@ ruff check src/
 powerflow/
 ├── src/powerflow/
 │   ├── __init__.py      # Version
+│   ├── __main__.py      # python -m powerflow entry
 │   ├── cli.py           # CLI entry point
 │   ├── pocket.py        # Pocket AI API client
 │   ├── notion.py        # Notion API client
