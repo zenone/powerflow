@@ -31,10 +31,9 @@ Each recording becomes a beautifully formatted Notion page:
 │ 💼 Meeting with Design Team                              │  ← Smart icon (from tags)
 ├──────────────────────────────────────────────────────────┤
 │                                                          │
-│ 💭 ┌──────────────────────────────────────────────────┐ │
-│    │ Discussed new onboarding flow. Team prefers      │ │  ← Summary
-│    │ progressive disclosure approach...               │ │
-│    └──────────────────────────────────────────────────┘ │
+│ ### Meeting Summary                                      │  ← Parsed markdown
+│ • **Team decision**: Progressive disclosure approach    │
+│ • Timeline: Launch by end of Q1                         │
 │                                                          │
 │ ### Action Items                                         │
 │                                                          │
@@ -305,7 +304,7 @@ Each Notion page includes:
 |---------|---------|
 | **Icon** | Auto-assigned emoji based on tags |
 | **Title** | Recording title or first line of summary |
-| **Summary callout** | Pocket's summary with markdown formatting |
+| **Summary** | Pocket's summary parsed into native headings, bullets, bold |
 | **Action items** | To-do checkboxes with priority and due dates |
 | **Mind map toggle** | Hierarchical outline of topics (if available) |
 | **Source toggle** | Duration, capture date, Pocket link, transcript |
