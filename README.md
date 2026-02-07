@@ -41,6 +41,11 @@ Each recording becomes a beautifully formatted Notion page:
 │ ☐ Review competitor onboarding [High] — due Feb 10      │  ← Extracted tasks
 │ ☐ Schedule follow-up with Sarah [Medium]                │
 │                                                          │
+│ ▸ 🧠 Mind Map                                           │  ← Hierarchical outline
+│     • Main Topic                                        │
+│       → Subtopic A                                      │
+│       → Subtopic B                                      │
+│                                                          │
 │ ─────────────────────────────────────────────────────── │
 │                                                          │
 │ ▸ 📎 Source Details                                     │  ← Collapsed toggle
@@ -300,8 +305,9 @@ Each Notion page includes:
 |---------|---------|
 | **Icon** | Auto-assigned emoji based on tags |
 | **Title** | Recording title or first line of summary |
-| **Summary callout** | AI-generated summary (if available) |
+| **Summary callout** | AI-generated summary with markdown formatting |
 | **Action items** | To-do checkboxes with priority and due dates |
+| **Mind map toggle** | Hierarchical outline of topics (if available) |
 | **Source toggle** | Duration, capture date, Pocket link, transcript |
 
 ---

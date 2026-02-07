@@ -145,11 +145,17 @@ class PocketClient:
         # Summarizations
         summarizations = data.get("summarizations", {})
         
-        # Summary
+        # Summary (API returns markdown field, not summary)
         summary = None
         v2_summary = summarizations.get("v2_summary", {})
         if isinstance(v2_summary, dict):
-            summary = v2_summary.get("summary")
+            summary = v2_summary.get("markdown") or v2_summary.get("summary")
+        
+        # Mind map (hierarchical outline)
+        mind_map_nodes = []
+        v2_mind_map = summarizations.get("v2_mind_map", {})
+        if isinstance(v2_mind_map, dict):
+            mind_map_nodes = v2_mind_map.get("nodes", [])
 
         # Action items
         action_items = []
@@ -184,6 +190,7 @@ class PocketClient:
             transcript=transcript,
             tags=tags,
             action_items=action_items,
+            mind_map=mind_map_nodes,
             created_at=created_at,
             duration_seconds=duration_seconds,
             pocket_url=pocket_url,

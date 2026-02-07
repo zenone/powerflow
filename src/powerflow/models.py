@@ -52,6 +52,7 @@ class Recording:
     transcript: Optional[str] = None
     tags: list[str] = field(default_factory=list)
     action_items: list[ActionItem] = field(default_factory=list)
+    mind_map: list[dict] = field(default_factory=list)  # Hierarchical outline nodes
     created_at: Optional[datetime] = None
     duration_seconds: Optional[int] = None
     pocket_url: Optional[str] = None
@@ -167,10 +168,28 @@ class Recording:
             children.append(create_heading("Action Items", level=3))
             children.extend(todo_blocks)
         
-        # 3. Divider before metadata
+        # 3. Mind map outline (if available) — hierarchical breakdown
+        if self.mind_map:
+            mind_map_children = []
+            for node in self.mind_map:
+                if isinstance(node, dict):
+                    node_title = node.get("title", "")
+                    if node_title:
+                        # Root nodes vs children (check if parent equals self)
+                        is_root = node.get("parent_node_id") == node.get("node_id")
+                        if is_root:
+                            mind_map_children.append(create_bullet(node_title, bold_prefix=None))
+                        else:
+                            # Indent child nodes
+                            mind_map_children.append(create_bullet(f"  → {node_title}", bold_prefix=None))
+            
+            if mind_map_children:
+                children.append(create_toggle("🧠 Mind Map", mind_map_children))
+        
+        # 4. Divider before metadata
         children.append(create_divider())
         
-        # 4. Source details toggle (collapsed by default)
+        # 5. Source details toggle (collapsed by default)
         source_children = []
         
         if self.duration_seconds:
