@@ -93,11 +93,12 @@ class SyncEngine:
                     result.skipped += 1
                     continue
 
-                # Create in Notion with rich body content
+                # Create in Notion with rich body content and icon
                 if not dry_run:
                     properties = recording.to_notion_properties(property_map)
                     children = recording.to_notion_children()
-                    self.notion.create_page(database_id, properties, children)
+                    icon = recording.get_icon()
+                    self.notion.create_page(database_id, properties, children, icon)
 
                 result.created += 1
 

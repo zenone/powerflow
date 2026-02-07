@@ -145,6 +145,46 @@ class TestRecording:
         assert len(tags) == 2  # work + meeting
 
 
+class TestRecordingIcon:
+    """Tests for Recording.get_icon() method."""
+
+    def test_icon_from_work_tag(self):
+        """Work tag should return briefcase emoji."""
+        rec = Recording(id="abc", tags=["work", "meeting"])
+        icon = rec.get_icon()
+        assert icon == {"type": "emoji", "emoji": "💼"}
+
+    def test_icon_from_meeting_tag(self):
+        """Meeting tag should return calendar emoji."""
+        rec = Recording(id="abc", tags=["meeting"])
+        icon = rec.get_icon()
+        assert icon == {"type": "emoji", "emoji": "📅"}
+
+    def test_icon_first_match_wins(self):
+        """First matching tag in the list wins."""
+        rec = Recording(id="abc", tags=["random", "idea", "work"])
+        icon = rec.get_icon()
+        assert icon == {"type": "emoji", "emoji": "💡"}  # idea comes before work
+
+    def test_icon_default_when_no_match(self):
+        """No matching tags should return default mic emoji."""
+        rec = Recording(id="abc", tags=["random", "stuff"])
+        icon = rec.get_icon()
+        assert icon == {"type": "emoji", "emoji": "🎙️"}
+
+    def test_icon_default_when_no_tags(self):
+        """Empty tags should return default mic emoji."""
+        rec = Recording(id="abc", tags=[])
+        icon = rec.get_icon()
+        assert icon == {"type": "emoji", "emoji": "🎙️"}
+
+    def test_icon_case_insensitive(self):
+        """Tag matching should be case-insensitive."""
+        rec = Recording(id="abc", tags=["WORK", "Meeting"])
+        icon = rec.get_icon()
+        assert icon == {"type": "emoji", "emoji": "💼"}
+
+
 class TestSyncResult:
     """Tests for SyncResult model."""
 

@@ -5,6 +5,22 @@ from datetime import datetime
 from typing import Optional
 
 
+# Tag to emoji mapping for Notion page icons
+TAG_EMOJI_MAP = {
+    "work": "💼",
+    "meeting": "📅",
+    "idea": "💡",
+    "reminder": "⏰",
+    "personal": "👤",
+    "task": "✅",
+    "note": "📝",
+    "question": "❓",
+    "important": "⭐",
+    "urgent": "🔥",
+}
+DEFAULT_EMOJI = "🎙️"
+
+
 @dataclass
 class ActionItem:
     """An action item extracted from a recording."""
@@ -57,6 +73,17 @@ class Recording:
                 return first_line[:57] + "..."
             return first_line
         return "Untitled Recording"
+
+    def get_icon(self) -> dict:
+        """Get Notion icon based on tags.
+        
+        Returns first matching tag emoji, or default mic emoji.
+        """
+        for tag in self.tags:
+            normalized = tag.strip().lower()
+            if normalized in TAG_EMOJI_MAP:
+                return {"type": "emoji", "emoji": TAG_EMOJI_MAP[normalized]}
+        return {"type": "emoji", "emoji": DEFAULT_EMOJI}
 
     def to_notion_properties(self, property_map: dict) -> dict:
         """Convert to Notion page properties based on mapping."""

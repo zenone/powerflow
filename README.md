@@ -1,43 +1,67 @@
 # ⚡ Power-Flow
 
-**Sync your Pocket AI action items to Notion — automatically.**
+**Sync your Pocket AI recordings to Notion — automatically.**
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/tests-52%20passed-brightgreen.svg)](#development)
+[![Tests](https://img.shields.io/badge/tests-87%20passed-brightgreen.svg)](#development)
 
 ---
 
 ## 🎯 What It Does
 
-You talk to [Pocket AI](https://heypocket.com/). It creates action items. Power-Flow puts them in your Notion inbox — with zero manual copy-paste.
+You talk to [Pocket AI](https://heypocket.com/). Power-Flow puts everything in your Notion inbox — ready for you to triage into tasks, notes, projects, or archive.
 
 ```
 ┌─────────────┐      ┌─────────────┐      ┌─────────────┐
 │  Pocket AI  │ ───▶ │ Power-Flow  │ ───▶ │   Notion    │
-│  (your AI)  │ API  │   (sync)    │ API  │  (inbox)    │
+│ (your voice)│ API  │   (sync)    │ API  │  (inbox)    │
 └─────────────┘      └─────────────┘      └─────────────┘
                             │
-                     ✓ Deduplication
-                     ✓ Priority styling
-                     ✓ Source links
+                     ✓ Each recording → Inbox item
+                     ✓ Action items → To-do checkboxes
+                     ✓ Tags & summary preserved
+                     ✓ Smart deduplication
 ```
 
-Each action item becomes a beautifully formatted Notion page:
+Each recording becomes a beautifully formatted Notion page:
 
-- 🔥 **High priority** → Red callout
-- ⚡ **Medium priority** → Yellow callout  
-- 📝 **Low priority** → Gray callout
-- 🔗 **Source link** → Back to the original Pocket recording
+```
+┌──────────────────────────────────────────────────────────┐
+│ 💼 Meeting with Design Team                              │  ← Smart icon (from tags)
+├──────────────────────────────────────────────────────────┤
+│                                                          │
+│ 💭 ┌──────────────────────────────────────────────────┐ │
+│    │ Discussed new onboarding flow. Team prefers      │ │  ← AI Summary
+│    │ progressive disclosure approach...               │ │
+│    └──────────────────────────────────────────────────┘ │
+│                                                          │
+│ ### Action Items                                         │
+│                                                          │
+│ ☐ Review competitor onboarding [High] — due Feb 10      │  ← Extracted tasks
+│ ☐ Schedule follow-up with Sarah [Medium]                │
+│                                                          │
+│ ─────────────────────────────────────────────────────── │
+│                                                          │
+│ ▸ 📎 Source Details                                     │  ← Collapsed toggle
+│     • Duration: 5:23                                    │
+│     • Captured: Feb 6, 2026 at 10:15 AM                │
+│     • Open in Pocket AI →                              │
+│     ▸ 📝 Full Transcript                               │
+│                                                          │
+└──────────────────────────────────────────────────────────┘
+```
 
 ---
 
 ## ✨ Features
 
 - **🔄 One-command sync** — Run `powerflow sync` and you're done
+- **📦 Recording-centric** — Each recording = one Inbox item (for GTD-style triage)
+- **✅ Action items preserved** — Pocket's extracted tasks become to-do checkboxes
+- **🎨 Smart icons** — Tags auto-map to emojis (work → 💼, idea → 💡, etc.)
 - **🚀 Incremental** — Only fetches new recordings since last sync
 - **🧠 Smart dedup** — Never creates duplicates, even if you run it 100 times
-- **🎨 Rich pages** — Beautiful Notion blocks, not just flat text
 - **🏷️ Tags sync** — Pocket tags → Notion multi-select
 - **⚡ Batch operations** — Efficient API usage (not N+1 queries)
 - **🔒 Secure** — API keys stay local, never leave your machine
@@ -94,7 +118,7 @@ This walks you through:
 powerflow sync
 ```
 
-That's it. Your action items are now in Notion. 🎉
+That's it. Your recordings are now in Notion. 🎉
 
 ---
 
@@ -156,10 +180,11 @@ The default "Internal Integration" permissions are fine.
 | Command | Description |
 |---------|-------------|
 | `powerflow setup` | First-time configuration wizard |
-| `powerflow sync` | Sync action items to Notion |
+| `powerflow sync` | Sync recordings to Notion |
 | `powerflow sync --dry-run` | Preview what would sync (no changes) |
 | `powerflow status` | Show sync status and pending count |
-| `powerflow config` | View current configuration |
+| `powerflow config show` | View current configuration |
+| `powerflow config reset` | Reset all configuration |
 | `powerflow --help` | Show all commands |
 
 ### Examples
@@ -168,7 +193,7 @@ The default "Internal Integration" permissions are fine.
 # See what would sync without actually syncing
 powerflow sync --dry-run
 
-# Check how many items are pending
+# Check how many recordings are pending
 powerflow status
 
 # Reconfigure (pick a different database)
@@ -229,17 +254,27 @@ powerflow daemon uninstall
 
 The daemon isn't just a dumb timer — it's smart:
 
-- **🔄 Retry on failure** — If sync fails, retries after 1 minute (up to 2 times) before waiting for next interval
+- **🔄 Retry on failure** — If sync fails, retries after 1 minute (up to 2 times)
 - **🔔 Desktop notifications** (macOS) — Get notified when new items sync
 - **📊 State tracking** — Tracks consecutive failures, last result, next sync time
 
-### Daemon Files
+---
 
-| File | Purpose |
-|------|---------|
-| `~/.powerflow/daemon.pid` | Process ID (prevents duplicates) |
-| `~/.powerflow/daemon.log` | Sync logs |
-| `~/.powerflow/daemon_state.json` | Last sync time, result, failures |
+## 🎨 Smart Icons
+
+Power-Flow automatically assigns page icons based on your Pocket tags:
+
+| Tag | Icon | Tag | Icon |
+|-----|------|-----|------|
+| work | 💼 | personal | 👤 |
+| meeting | 📅 | reminder | ⏰ |
+| idea | 💡 | task | ✅ |
+| note | 📝 | question | ❓ |
+| important | ⭐ | urgent | 🔥 |
+
+No matching tag? Default: 🎙️ (mic for voice recordings)
+
+First matching tag wins, so order your tags by importance if you want control.
 
 ---
 
@@ -248,39 +283,26 @@ The daemon isn't just a dumb timer — it's smart:
 ### Sync Flow
 
 1. **Fetch** — Get recordings from Pocket API (only new ones since last sync)
-2. **Extract** — Pull action items from each recording
-3. **Dedupe** — Batch-check which items already exist in Notion
-4. **Create** — Add new items as beautifully formatted Notion pages
+2. **Parse** — Extract title, summary, action items, tags, transcript
+3. **Dedupe** — Batch-check which recordings already exist in Notion
+4. **Create** — Add new recordings as rich Notion pages with icons
 5. **Track** — Update `last_sync` timestamp for next run
 
 ### Deduplication
 
-Every action item gets a unique ID like `pocket:abc123:0` (recording ID + item index). This is stored in Notion and checked before creating. Run sync 100 times — you'll never get duplicates.
+Every recording gets a unique ID like `pocket:recording:abc123`. This is stored in Notion and checked before creating. Run sync 100 times — you'll never get duplicates.
 
-### Rich Page Content
+### Page Structure
 
 Each Notion page includes:
 
-```
-┌──────────────────────────────────────┐
-│ 📋 Action Item Title                 │ ← Title property
-├──────────────────────────────────────┤
-│                                      │
-│ ┌──────────────────────────────────┐ │
-│ │ 🔥 Context                       │ │ ← Callout (color = priority)
-│ │ The AI's explanation of why...   │ │
-│ └──────────────────────────────────┘ │
-│                                      │
-│ ────────────────────────────────────│ │ ← Divider
-│                                      │
-│ ▸ Source Details                     │ ← Toggle (collapsed)
-│   • Recording: "Morning standup"     │
-│   • Duration: 5:23                   │
-│   • Created: Feb 6, 2026             │
-│   🔗 Open in Pocket AI               │
-│                                      │
-└──────────────────────────────────────┘
-```
+| Section | Content |
+|---------|---------|
+| **Icon** | Auto-assigned emoji based on tags |
+| **Title** | Recording title or first line of summary |
+| **Summary callout** | AI-generated summary (if available) |
+| **Action items** | To-do checkboxes with priority and due dates |
+| **Source toggle** | Duration, capture date, Pocket link, transcript |
 
 ---
 
@@ -296,9 +318,6 @@ Config lives at `~/.powerflow/config.json`:
     "property_map": {
       "title": "Name",
       "pocket_id": "Inbox ID",
-      "priority": "Priority",
-      "due_date": "Due Date",
-      "context": "Next step",
       "tags": "Tags",
       "source_url": "Source"
     }
@@ -315,11 +334,8 @@ Power-Flow maps Pocket fields to your existing Notion properties. If a property 
 
 | Pocket Field | Notion Property | Type | Required |
 |--------------|-----------------|------|----------|
-| Action label | Title (e.g., "Name") | title | ✅ Yes |
+| Title | Title (e.g., "Name") | title | ✅ Yes |
 | Pocket ID | Any text field (e.g., "Inbox ID") | rich_text | ✅ Yes (for dedup) |
-| Priority | Select field | select | Optional |
-| Due date | Date field | date | Optional |
-| Context | Text field | rich_text | Optional |
 | Tags | Multi-select | multi_select | Optional |
 | Source URL | URL field | url | Optional |
 
@@ -341,18 +357,9 @@ Power-Flow maps Pocket fields to your existing Notion properties. If a property 
 **Cause**: Invalid or expired Pocket API key.
 
 **Fix**:
-1. Open Pocket AI app → Settings → API Keys
+1. Open Pocket AI app → Settings → Developers → API Keys
 2. Generate a new key
 3. Update your `POCKET_API_KEY` environment variable
-
-### "Property type mismatch"
-
-**Cause**: You're mapping to a property with an incompatible type (e.g., mapping text to a relation field).
-
-**Fix**: 
-1. Run `powerflow setup` again
-2. Choose a different property, or
-3. Create a new property with the correct type
 
 ### "Rate limited"
 
@@ -363,7 +370,7 @@ Power-Flow maps Pocket fields to your existing Notion properties. If a property 
 ### Sync runs but nothing appears
 
 **Check these**:
-1. Are there new action items in Pocket? (Items already synced are skipped)
+1. Are there new recordings in Pocket? (Already-synced recordings are skipped)
 2. Run `powerflow sync --dry-run` to see what would sync
 3. Check `powerflow status` for pending count
 
@@ -401,20 +408,16 @@ ruff check src/
 ```
 powerflow/
 ├── src/powerflow/
-│   ├── __init__.py
-│   ├── cli.py          # CLI entry point
-│   ├── pocket.py       # Pocket AI API client
-│   ├── notion.py       # Notion API client
-│   ├── sync.py         # Core sync engine
-│   ├── blocks.py       # Notion block builders
-│   ├── config.py       # Configuration management
-│   └── models.py       # Data models
-├── tests/
-│   ├── test_models.py
-│   ├── test_blocks.py
-│   ├── test_incremental_sync.py
-│   ├── test_batch_dedup.py
-│   └── test_tags_sync.py
+│   ├── __init__.py      # Version
+│   ├── cli.py           # CLI entry point
+│   ├── pocket.py        # Pocket AI API client
+│   ├── notion.py        # Notion API client
+│   ├── sync.py          # Core sync engine
+│   ├── blocks.py        # Notion block builders
+│   ├── config.py        # Configuration management
+│   ├── models.py        # Data models (Recording, ActionItem)
+│   └── daemon.py        # Background sync daemon
+├── tests/               # 87 tests
 ├── pyproject.toml
 └── README.md
 ```

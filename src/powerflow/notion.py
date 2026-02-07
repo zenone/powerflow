@@ -149,6 +149,7 @@ class NotionClient:
         database_id: str,
         properties: dict,
         children: list[dict] = None,
+        icon: dict = None,
     ) -> dict:
         """Create a new page in the database with optional body content.
         
@@ -156,6 +157,7 @@ class NotionClient:
             database_id: Target database ID
             properties: Page properties (database fields)
             children: Optional list of block objects for page body content
+            icon: Optional page icon, e.g. {"type": "emoji", "emoji": "🎙️"}
         
         Returns:
             Created page object
@@ -166,6 +168,8 @@ class NotionClient:
         }
         if children:
             payload["children"] = children
+        if icon:
+            payload["icon"] = icon
         return self._request("POST", "/pages", json=payload)
 
     def create_property(
