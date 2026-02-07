@@ -450,18 +450,19 @@ def cmd_setup() -> int:
 
 def cmd_sync(dry_run: bool = False) -> int:
     """
-    Sync action items from Pocket to Notion.
+    Sync recordings from Pocket to Notion Inbox.
     
     Business Logic:
     1. Load configuration
     2. Verify API keys are available
-    3. Fetch action items from Pocket
-    4. For each item:
+    3. Fetch recordings from Pocket (with full details)
+    4. For each recording:
        a. Check if pocket_id already exists in Notion (DEDUPLICATION)
        b. If exists → skip
-       c. If not exists → create
+       c. If not exists → create with summary, action items, transcript
     5. Report results
     
+    Each recording becomes an Inbox item for triage (task, note, project, archive).
     CRITICAL: Never create duplicates. Always check before creating.
     """
     # Get API keys
@@ -518,7 +519,7 @@ def cmd_sync(dry_run: bool = False) -> int:
             print(f"   ... and {len(result.errors) - 5} more errors")
 
     if result.total == 0:
-        print_info("No action items found in Pocket")
+        print_info("No new recordings found in Pocket")
 
     print()
     return 0 if result.failed == 0 else 1
@@ -556,13 +557,13 @@ def cmd_status() -> int:
         return 0
 
     # Try to get pending count
-    print("\n   Checking for new items...", end=" ", flush=True)
+    print("\n   Checking for new recordings...", end=" ", flush=True)
     try:
         pocket = PocketClient(pocket_key)
         notion = NotionClient(notion_key)
         engine = SyncEngine(pocket, notion, config)
         pending = engine.get_pending_count()
-        print(f"\n\n📬 {pending} new items ready to sync")
+        print(f"\n\n📬 {pending} new recordings ready to sync")
     except Exception as e:
         print(f"\n\n⚠️  Could not check: {e}")
 
@@ -728,11 +729,15 @@ def main(args: Optional[list[str]] = None) -> int:
 def print_usage():
     """Print usage information."""
     print("""
-Power-Flow: Sync Pocket AI action items to Notion
+Power-Flow: Sync Pocket AI recordings to Notion Inbox
+
+Each recording becomes an Inbox item for you to triage into tasks, notes, 
+projects, or archive. Action items extracted by Pocket AI appear as to-do 
+checkboxes within the page.
 
 Usage:
   powerflow setup              Configure database and property mapping
-  powerflow sync               Sync action items to Notion
+  powerflow sync               Sync recordings to Notion
   powerflow sync --dry-run     Preview sync without making changes
   powerflow status             Show sync status and pending count
   powerflow config show        Show current configuration

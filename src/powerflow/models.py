@@ -7,21 +7,56 @@ from typing import Optional
 
 @dataclass
 class ActionItem:
-    """An action item from Pocket AI."""
+    """An action item extracted from a recording."""
 
     label: str
-    pocket_id: str  # Unique ID for deduplication
-    recording_id: str
     priority: Optional[str] = None
     due_date: Optional[datetime] = None
     assignee: Optional[str] = None
     context: Optional[str] = None
     item_type: Optional[str] = None  # CreateReminder, etc.
-    recording_title: Optional[str] = None
-    recording_url: Optional[str] = None
+
+    def to_checklist_text(self) -> str:
+        """Format as a checklist-style text line."""
+        parts = [f"☐ {self.label}"]
+        if self.priority:
+            parts.append(f" [{self.priority}]")
+        if self.due_date:
+            parts.append(f" (due: {self.due_date.strftime('%b %d')})")
+        return "".join(parts)
+
+
+@dataclass
+class Recording:
+    """A recording from Pocket AI — the unit of sync."""
+
+    id: str
+    title: Optional[str] = None
+    summary: Optional[str] = None
+    transcript: Optional[str] = None
+    tags: list[str] = field(default_factory=list)
+    action_items: list[ActionItem] = field(default_factory=list)
     created_at: Optional[datetime] = None
-    duration_seconds: Optional[int] = None  # Recording duration
-    tags: list[str] = field(default_factory=list)  # From recording
+    duration_seconds: Optional[int] = None
+    pocket_url: Optional[str] = None
+
+    @property
+    def pocket_id(self) -> str:
+        """Unique ID for deduplication."""
+        return f"pocket:recording:{self.id}"
+
+    @property
+    def display_title(self) -> str:
+        """Best title for display."""
+        if self.title and self.title.strip():
+            return self.title.strip()
+        if self.summary:
+            # First sentence or first 60 chars
+            first_line = self.summary.split('.')[0].strip()
+            if len(first_line) > 60:
+                return first_line[:57] + "..."
+            return first_line
+        return "Untitled Recording"
 
     def to_notion_properties(self, property_map: dict) -> dict:
         """Convert to Notion page properties based on mapping."""
@@ -29,35 +64,17 @@ class ActionItem:
 
         # Title is always required
         title_prop = property_map.get("title", "Name")
-        props[title_prop] = {"title": [{"text": {"content": self.label}}]}
+        props[title_prop] = {"title": [{"text": {"content": self.display_title}}]}
 
-        # Pocket ID for deduplication
+        # Pocket ID for deduplication (CRITICAL)
         pocket_id_prop = property_map.get("pocket_id", "Inbox ID")
         props[pocket_id_prop] = {"rich_text": [{"text": {"content": self.pocket_id}}]}
 
-        # Priority (select)
-        if self.priority and "priority" in property_map:
-            props[property_map["priority"]] = {"select": {"name": self.priority}}
-
-        # Due date
-        if self.due_date and "due_date" in property_map:
-            props[property_map["due_date"]] = {
-                "date": {"start": self.due_date.isoformat()}
-            }
-
-        # Context (rich text)
-        if self.context and "context" in property_map:
-            # Truncate context if too long (Notion limit is 2000 chars per text block)
-            context_text = self.context[:1900] if len(self.context) > 1900 else self.context
-            props[property_map["context"]] = {
-                "rich_text": [{"text": {"content": context_text}}]
-            }
-
         # Source URL
-        if self.recording_url and "source_url" in property_map:
-            props[property_map["source_url"]] = {"url": self.recording_url}
+        if self.pocket_url and "source_url" in property_map:
+            props[property_map["source_url"]] = {"url": self.pocket_url}
 
-        # Tags (multi-select) — normalize and deduplicate
+        # Tags (multi-select)
         if self.tags and "tags" in property_map:
             seen = set()
             unique_tags = []
@@ -72,16 +89,13 @@ class ActionItem:
         return props
 
     def to_notion_children(self) -> list[dict]:
-        """Build the page body blocks for rich visual content.
+        """Build the page body blocks.
         
         Structure:
-        1. Context callout (priority-styled with icon and color)
-        2. Divider
-        3. Source details toggle (collapsed by default)
-           - Recording title
-           - Duration
-           - Created date
-           - Link to Pocket
+        1. Summary callout (if available)
+        2. Action items as to-do blocks (if any)
+        3. Divider
+        4. Source details toggle
         """
         from .blocks import (
             create_callout,
@@ -89,28 +103,33 @@ class ActionItem:
             create_toggle,
             create_bullet,
             create_paragraph,
-            get_priority_style,
+            create_todo,
             format_duration,
         )
         
         children = []
         
-        # 1. Context callout (priority-styled)
-        if self.context:
-            style = get_priority_style(self.priority)
+        # 1. Summary callout
+        if self.summary:
             children.append(
                 create_callout(
-                    self.context,
-                    icon=style["icon"],
-                    color=style["color"]
+                    self.summary,
+                    icon="💭",
+                    color="gray_background"
                 )
             )
         
-        # Only add remaining blocks if we have source details
-        source_children = []
+        # 2. Action items as to-do blocks
+        if self.action_items:
+            children.append(create_paragraph("**Action Items:**"))
+            for item in self.action_items:
+                todo_text = item.label
+                if item.priority:
+                    todo_text += f" [{item.priority}]"
+                children.append(create_todo(todo_text))
         
-        if self.recording_title:
-            source_children.append(create_bullet(self.recording_title, "Recording"))
+        # 3. Source details
+        source_children = []
         
         if self.duration_seconds:
             duration_str = format_duration(self.duration_seconds)
@@ -118,37 +137,34 @@ class ActionItem:
         
         if self.created_at:
             date_str = self.created_at.strftime("%b %d, %Y at %I:%M %p")
-            source_children.append(create_bullet(date_str, "Created"))
+            source_children.append(create_bullet(date_str, "Captured"))
         
-        if self.recording_url:
+        if self.pocket_url:
             source_children.append(
                 create_paragraph(
                     "🔗 Open in Pocket AI",
-                    link=self.recording_url,
+                    link=self.pocket_url,
                     color="blue"
                 )
             )
         
-        # Add divider and toggle if we have source details
+        # Transcript toggle (collapsed)
+        if self.transcript:
+            transcript_preview = self.transcript[:500]
+            if len(self.transcript) > 500:
+                transcript_preview += "..."
+            source_children.append(
+                create_toggle("Transcript", [
+                    create_paragraph(transcript_preview)
+                ])
+            )
+        
+        # Add divider and source toggle if we have details
         if source_children:
             children.append(create_divider())
             children.append(create_toggle("Source Details", source_children))
         
         return children
-
-
-@dataclass
-class Recording:
-    """A recording from Pocket AI."""
-
-    id: str
-    title: Optional[str] = None
-    summary: Optional[str] = None
-    transcript: Optional[str] = None
-    tags: list[str] = field(default_factory=list)
-    action_items: list[ActionItem] = field(default_factory=list)
-    created_at: Optional[datetime] = None
-    duration_seconds: Optional[int] = None
 
 
 @dataclass

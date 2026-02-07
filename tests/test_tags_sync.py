@@ -1,92 +1,89 @@
-"""Tests for tags sync (v0.3)."""
-
-from datetime import datetime
+"""Tests for tags synchronization."""
 
 import pytest
 
-from powerflow.models import ActionItem
+from powerflow.models import Recording
 
 
 class TestTagsSync:
-    """Tests for tags sync feature."""
+    """Tests for recording tags syncing to Notion."""
 
-    def test_action_item_with_tags_to_notion_properties(self):
-        """Tags should be included in Notion properties as multi_select."""
-        item = ActionItem(
-            label="Test action",
-            pocket_id="pocket:123:0",
-            recording_id="123",
-            tags=["work", "urgent", "meeting"],
+    def test_recording_with_tags_to_notion_properties(self):
+        """Test recording with tags converts to Notion multi_select."""
+        rec = Recording(
+            id="abc123",
+            title="Test",
+            tags=["work", "important", "meeting"],
         )
-
         property_map = {
             "title": "Name",
             "pocket_id": "Inbox ID",
             "tags": "Tags",
         }
-
-        props = item.to_notion_properties(property_map)
-
+        props = rec.to_notion_properties(property_map)
+        
         assert "Tags" in props
         assert props["Tags"]["multi_select"] == [
             {"name": "work"},
-            {"name": "urgent"},
+            {"name": "important"},
             {"name": "meeting"},
         ]
 
-    def test_action_item_empty_tags(self):
-        """Empty tags list should not add Tags property."""
-        item = ActionItem(
-            label="Test action",
-            pocket_id="pocket:123:0",
-            recording_id="123",
+    def test_recording_empty_tags(self):
+        """Test recording with empty tags list."""
+        rec = Recording(
+            id="abc123",
+            title="Test",
             tags=[],
         )
-
         property_map = {
             "title": "Name",
             "pocket_id": "Inbox ID",
             "tags": "Tags",
         }
-
-        props = item.to_notion_properties(property_map)
-
-        # Tags property should not be present if empty
+        props = rec.to_notion_properties(property_map)
+        
+        # Tags property should not be included if empty
         assert "Tags" not in props
 
-    def test_action_item_no_tags_in_map(self):
-        """If tags not in property_map, should be ignored."""
-        item = ActionItem(
-            label="Test action",
-            pocket_id="pocket:123:0",
-            recording_id="123",
-            tags=["work"],
+    def test_recording_no_tags_in_map(self):
+        """Test recording when tags not in property map."""
+        rec = Recording(
+            id="abc123",
+            title="Test",
+            tags=["work", "meeting"],
         )
-
         property_map = {
             "title": "Name",
             "pocket_id": "Inbox ID",
-            # No "tags" mapping
+            # No tags mapping
         }
-
-        props = item.to_notion_properties(property_map)
-
-        # Should not fail, just skip tags
+        props = rec.to_notion_properties(property_map)
+        
+        # Tags should not appear in props
         assert "Tags" not in props
+        assert "tags" not in props
 
     def test_tags_normalized_for_notion(self):
-        """Tags should be normalized (trimmed, deduplicated)."""
-        item = ActionItem(
-            label="Test action",
-            pocket_id="pocket:123:0",
-            recording_id="123",
-            tags=["work", " work ", "WORK", "meeting"],  # Duplicates
+        """Test tags are normalized (stripped, deduplicated)."""
+        rec = Recording(
+            id="abc123",
+            title="Test",
+            tags=["  Work  ", "work", "WORK", "Meeting", "meeting"],
         )
-
-        property_map = {"title": "Name", "pocket_id": "ID", "tags": "Tags"}
-        props = item.to_notion_properties(property_map)
-
-        # Should deduplicate (case-insensitive) and trim
-        tag_names = [t["name"] for t in props["Tags"]["multi_select"]]
-        assert len(tag_names) == 2  # "work" and "meeting"
-        assert "meeting" in tag_names
+        property_map = {
+            "title": "Name",
+            "pocket_id": "Inbox ID",
+            "tags": "Tags",
+        }
+        props = rec.to_notion_properties(property_map)
+        
+        # Should deduplicate case-insensitively, keeping first occurrence's casing
+        tags = props["Tags"]["multi_select"]
+        tag_names = [t["name"] for t in tags]
+        
+        # Should have exactly 2 unique tags
+        assert len(tags) == 2
+        # First occurrence of each should be preserved
+        assert "Work" in tag_names
+        assert "Meeting" in tag_names

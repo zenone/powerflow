@@ -142,6 +142,18 @@ def create_quote(text: str, color: str = "default") -> dict:
     }
 
 
+def create_todo(text: str, checked: bool = False) -> dict:
+    """Create a to-do checkbox block."""
+    return {
+        "type": "to_do",
+        "to_do": {
+            "rich_text": [create_rich_text(text)],
+            "checked": checked,
+            "color": "default"
+        }
+    }
+
+
 def create_heading(text: str, level: int = 2, color: str = "default") -> dict:
     """Create a heading block (level 1, 2, or 3)."""
     level = max(1, min(3, level))  # Clamp to 1-3

@@ -1,44 +1,69 @@
-"""Tests for incremental sync (v0.3)."""
+"""Tests for incremental sync functionality."""
 
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch
-
+from unittest.mock import MagicMock
 import pytest
 
-from powerflow.models import ActionItem
+from powerflow.models import Recording
 from powerflow.sync import SyncEngine
 
 
 class TestIncrementalSync:
-    """Tests for incremental sync feature."""
+    """Tests for incremental sync using last_sync timestamp."""
 
     def test_sync_uses_last_sync_timestamp(self):
         """Sync should pass last_sync to Pocket client."""
         mock_pocket = MagicMock()
-        mock_pocket.fetch_action_items_since.return_value = []
+        mock_pocket.fetch_recordings.return_value = []
         mock_notion = MagicMock()
         mock_config = MagicMock()
         mock_config.is_configured = True
         mock_config.notion.database_id = "db123"
         mock_config.notion.property_map = {"pocket_id": "Inbox ID"}
-        mock_config.pocket.last_sync = datetime(2026, 2, 5, 12, 0, 0, tzinfo=timezone.utc)
+        mock_config.pocket.last_sync = "2026-02-06T10:00:00+00:00"
 
         engine = SyncEngine(mock_pocket, mock_notion, mock_config)
         engine.sync()
 
-        mock_pocket.fetch_action_items_since.assert_called_once()
-        call_args = mock_pocket.fetch_action_items_since.call_args
-        assert call_args[0][0] == mock_config.pocket.last_sync
+        # Should have called fetch_recordings
+        mock_pocket.fetch_recordings.assert_called_once()
+        call_args = mock_pocket.fetch_recordings.call_args
+        
+        # Get the 'since' kwarg
+        since = call_args.kwargs.get("since")
+        
+        assert since is not None, "since should be passed to fetch_recordings"
+        assert since.tzinfo is not None, "since should be timezone-aware"
+        assert since.year == 2026
+        assert since.month == 2
+        assert since.day == 6
 
     def test_sync_updates_last_sync_after_success(self):
-        """After successful sync, last_sync should be updated."""
+        """Sync should update last_sync timestamp after successful sync."""
         mock_pocket = MagicMock()
-        mock_pocket.fetch_action_items_since.return_value = [
-            ActionItem(
-                label="Test",
-                pocket_id="pocket:123:0",
-                recording_id="123",
-            )
+        mock_pocket.fetch_recordings.return_value = [
+            Recording(id="1", title="Test"),
+        ]
+        mock_notion = MagicMock()
+        mock_notion.batch_check_existing_pocket_ids.return_value = set()
+        mock_notion.create_page.return_value = {"id": "page123"}
+        mock_config = MagicMock()
+        mock_config.is_configured = True
+        mock_config.notion.database_id = "db123"
+        mock_config.notion.property_map = {"pocket_id": "Inbox ID", "title": "Name"}
+        mock_config.pocket.last_sync = None
+
+        engine = SyncEngine(mock_pocket, mock_notion, mock_config)
+        result = engine.sync()
+
+        assert result.created == 1
+        mock_config.update_last_sync.assert_called_once()
+
+    def test_sync_does_not_update_last_sync_on_dry_run(self):
+        """Dry run should not update last_sync."""
+        mock_pocket = MagicMock()
+        mock_pocket.fetch_recordings.return_value = [
+            Recording(id="1", title="Test"),
         ]
         mock_notion = MagicMock()
         mock_notion.batch_check_existing_pocket_ids.return_value = set()
@@ -49,45 +74,35 @@ class TestIncrementalSync:
         mock_config.pocket.last_sync = None
 
         engine = SyncEngine(mock_pocket, mock_notion, mock_config)
-        engine.sync()
+        result = engine.sync(dry_run=True)
 
-        mock_config.update_last_sync.assert_called_once()
-
-    def test_sync_does_not_update_last_sync_on_dry_run(self):
-        """Dry run should not update last_sync."""
-        mock_pocket = MagicMock()
-        mock_pocket.fetch_action_items_since.return_value = [
-            ActionItem(
-                label="Test",
-                pocket_id="pocket:123:0",
-                recording_id="123",
-            )
-        ]
-        mock_notion = MagicMock()
-        mock_config = MagicMock()
-        mock_config.is_configured = True
-        mock_config.notion.database_id = "db123"
-        mock_config.notion.property_map = {"pocket_id": "Inbox ID"}
-        mock_config.pocket.last_sync = None
-
-        engine = SyncEngine(mock_pocket, mock_notion, mock_config)
-        engine.sync(dry_run=True)
-
+        assert result.created == 1
         mock_config.update_last_sync.assert_not_called()
 
     def test_full_sync_when_no_last_sync(self):
-        """When last_sync is None, fetch all recordings."""
+        """Should fetch all recordings when last_sync is None."""
         mock_pocket = MagicMock()
-        mock_pocket.fetch_action_items_since.return_value = []
+        mock_pocket.fetch_recordings.return_value = [
+            Recording(id="1", title="Old Recording"),
+            Recording(id="2", title="New Recording"),
+        ]
         mock_notion = MagicMock()
+        mock_notion.batch_check_existing_pocket_ids.return_value = set()
+        mock_notion.create_page.return_value = {"id": "page123"}
         mock_config = MagicMock()
         mock_config.is_configured = True
         mock_config.notion.database_id = "db123"
-        mock_config.notion.property_map = {"pocket_id": "Inbox ID"}
-        mock_config.pocket.last_sync = None  # No previous sync
+        mock_config.notion.property_map = {"pocket_id": "Inbox ID", "title": "Name"}
+        mock_config.pocket.last_sync = None
 
         engine = SyncEngine(mock_pocket, mock_notion, mock_config)
-        engine.sync()
+        result = engine.sync()
 
-        # Should be called with None (full sync)
-        mock_pocket.fetch_action_items_since.assert_called_once_with(None)
+        # Should sync all recordings
+        assert result.created == 2
+        
+        # Should have called with since=None
+        mock_pocket.fetch_recordings.assert_called_once()
+        call_args = mock_pocket.fetch_recordings.call_args
+        since = call_args.kwargs.get("since")
+        assert since is None

@@ -2,7 +2,7 @@
 
 import os
 import requests
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from .models import ActionItem, Recording
@@ -11,6 +11,25 @@ from .models import ActionItem, Recording
 # Base URL from official docs: https://docs.heypocketai.com/docs/api
 DEFAULT_BASE_URL = "https://public.heypocketai.com/api/v1"
 BASE_URL = os.getenv("POCKET_API_URL", DEFAULT_BASE_URL)
+
+# Pocket web app URL for recording links
+POCKET_WEB_URL = "https://heypocket.com"
+
+
+def parse_datetime(dt_str: Optional[str]) -> Optional[datetime]:
+    """Parse an ISO datetime string, handling timezone properly."""
+    if not dt_str:
+        return None
+    try:
+        # Handle Z suffix
+        dt_str = dt_str.replace("Z", "+00:00")
+        dt = datetime.fromisoformat(dt_str)
+        # Ensure timezone-aware (assume UTC if naive)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+    except (ValueError, AttributeError):
+        return None
 
 
 class PocketClient:
@@ -31,13 +50,13 @@ class PocketClient:
         response.raise_for_status()
         return response.json()
 
-    def get_recordings(self, limit: int = 100) -> list[dict]:
-        """Get all recordings."""
+    def get_recordings_list(self, limit: int = 100) -> list[dict]:
+        """Get list of recordings (without full details)."""
         data = self._request("GET", "/public/recordings", params={"limit": limit})
         return data.get("data", [])
 
-    def get_recording(self, recording_id: str) -> dict:
-        """Get a single recording with full details."""
+    def get_recording_details(self, recording_id: str) -> dict:
+        """Get a single recording with full details including summarizations."""
         data = self._request("GET", f"/public/recordings/{recording_id}")
         return data.get("data", {})
 
@@ -51,121 +70,129 @@ class PocketClient:
         data = self._request("POST", "/public/search", json={"query": query})
         return data.get("data", [])
 
-    def fetch_all_action_items(self) -> list[ActionItem]:
-        """Fetch all action items from all recordings."""
-        return self.fetch_action_items_since(None)
-
-    def fetch_action_items_since(self, since: Optional[datetime]) -> list[ActionItem]:
-        """Fetch action items from recordings created after `since` timestamp.
+    def fetch_recordings(self, since: Optional[datetime] = None) -> list[Recording]:
+        """
+        Fetch all recordings, optionally filtered by created_at timestamp.
         
         Args:
             since: Only fetch recordings created after this time. If None, fetch all.
             
         Returns:
-            List of ActionItem objects from matching recordings.
+            List of Recording objects with full details.
         """
-        action_items = []
-        recordings = self.get_recordings()
+        recordings = []
+        raw_list = self.get_recordings_list()
 
-        for rec in recordings:
+        for rec in raw_list:
             recording_id = rec.get("id")
             if not recording_id:
                 continue
 
             # Filter by created_at if since is provided
             if since:
-                rec_created = rec.get("createdAt") or rec.get("created_at")
-                if rec_created:
-                    try:
-                        rec_time = datetime.fromisoformat(rec_created.replace("Z", "+00:00"))
-                        if rec_time <= since:
-                            continue  # Skip recordings before since
-                    except (ValueError, AttributeError):
-                        pass  # If can't parse, include it
+                rec_created = parse_datetime(rec.get("createdAt") or rec.get("created_at"))
+                if rec_created and rec_created <= since:
+                    continue  # Skip recordings before since
 
             # Get full recording details
-            full_rec = self.get_recording(recording_id)
-            items = self._extract_action_items(full_rec, recording_id)
-            action_items.extend(items)
+            try:
+                full_rec = self.get_recording_details(recording_id)
+                recording = self._parse_recording(full_rec)
+                if recording:
+                    recordings.append(recording)
+            except requests.RequestException:
+                # Skip failed fetches, continue with others
+                continue
 
-        return action_items
+        return recordings
 
-    def _extract_action_items(self, recording: dict, recording_id: str) -> list[ActionItem]:
-        """Extract action items from a recording response."""
-        items = []
+    def _parse_recording(self, data: dict) -> Optional[Recording]:
+        """Parse raw API response into a Recording object."""
+        recording_id = data.get("id")
+        if not recording_id:
+            return None
 
-        # Navigate to action items: data.summarizations.v2_action_items.actions[]
-        summarizations = recording.get("summarizations", {})
-        v2_actions = summarizations.get("v2_action_items", {})
-        actions = v2_actions.get("actions", [])
-
-        recording_title = recording.get("title") or recording.get("name")
-        recording_created = recording.get("createdAt") or recording.get("created_at")
+        # Extract basic fields
+        title = data.get("title") or data.get("name")
+        created_at = parse_datetime(data.get("createdAt") or data.get("created_at"))
         
-        # Get duration from recording metadata
+        # Duration
         duration_seconds = None
-        duration_raw = recording.get("duration") or recording.get("durationSeconds")
+        duration_raw = data.get("duration") or data.get("durationSeconds")
         if duration_raw:
             try:
                 duration_seconds = int(duration_raw)
             except (ValueError, TypeError):
                 pass
-        
-        # Extract tags from recording
-        recording_tags = []
-        tags_data = recording.get("tags") or []
+
+        # Tags
+        tags = []
+        tags_data = data.get("tags") or []
         for tag in tags_data:
             if isinstance(tag, dict):
                 tag_name = tag.get("name") or tag.get("label")
             else:
                 tag_name = str(tag)
             if tag_name:
-                recording_tags.append(tag_name)
+                tags.append(tag_name)
 
-        for idx, action in enumerate(actions):
-            # Generate unique pocket_id for deduplication
-            # Use action's native ID if available, otherwise use index
-            action_id = action.get("id") or f"{recording_id}:{idx}"
-            pocket_id = f"pocket:{action_id}"
+        # Transcript
+        transcript = None
+        transcript_data = data.get("transcript", {})
+        if isinstance(transcript_data, dict):
+            transcript = transcript_data.get("text")
 
-            # Parse due date if present
+        # Summarizations
+        summarizations = data.get("summarizations", {})
+        
+        # Summary
+        summary = None
+        v2_summary = summarizations.get("v2_summary", {})
+        if isinstance(v2_summary, dict):
+            summary = v2_summary.get("summary")
+
+        # Action items
+        action_items = []
+        v2_actions = summarizations.get("v2_action_items", {})
+        actions_list = v2_actions.get("actions", []) if isinstance(v2_actions, dict) else []
+        
+        for action in actions_list:
+            if not isinstance(action, dict):
+                continue
+                
             due_date = None
             if action.get("dueDate"):
-                try:
-                    due_date = datetime.fromisoformat(action["dueDate"].replace("Z", "+00:00"))
-                except (ValueError, AttributeError):
-                    pass
-
-            # Parse created date
-            created_at = None
-            if recording_created:
-                try:
-                    created_at = datetime.fromisoformat(recording_created.replace("Z", "+00:00"))
-                except (ValueError, AttributeError):
-                    pass
+                due_date = parse_datetime(action["dueDate"])
 
             item = ActionItem(
                 label=action.get("label", "Untitled Action"),
-                pocket_id=pocket_id,
-                recording_id=recording_id,
                 priority=action.get("priority"),
                 due_date=due_date,
                 assignee=action.get("assignee"),
                 context=action.get("context"),
                 item_type=action.get("type"),
-                recording_title=recording_title,
-                created_at=created_at,
-                duration_seconds=duration_seconds,
-                tags=recording_tags,
             )
-            items.append(item)
+            action_items.append(item)
 
-        return items
+        # Build recording URL
+        pocket_url = f"{POCKET_WEB_URL}/recordings/{recording_id}"
+
+        return Recording(
+            id=recording_id,
+            title=title,
+            summary=summary,
+            transcript=transcript,
+            tags=tags,
+            action_items=action_items,
+            created_at=created_at,
+            duration_seconds=duration_seconds,
+            pocket_url=pocket_url,
+        )
 
     def test_connection(self) -> bool:
         """Test API connection."""
         try:
-            self.get_recordings(limit=1)
+            self.get_recordings_list(limit=1)
             return True
         except requests.RequestException:
             return False
