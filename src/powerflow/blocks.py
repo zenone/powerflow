@@ -177,3 +177,111 @@ def get_priority_style(priority: Optional[str]) -> dict:
         if priority not in PRIORITY_STYLES:
             priority = None
     return PRIORITY_STYLES.get(priority, PRIORITY_STYLES[None])
+
+
+def parse_bold_segments(text: str) -> list[dict]:
+    """Parse **bold** markers and return rich_text array with proper annotations.
+    
+    Example: "Hello **world** and **foo**" 
+    Returns: [{"text": "Hello "}, {"text": "world", bold}, {"text": " and "}, {"text": "foo", bold}]
+    """
+    import re
+    rich_text = []
+    
+    # Pattern matches **text** 
+    pattern = r'\*\*([^*]+)\*\*'
+    last_end = 0
+    
+    for match in re.finditer(pattern, text):
+        # Add text before the match (non-bold)
+        if match.start() > last_end:
+            before = text[last_end:match.start()]
+            if before:
+                rich_text.append(create_rich_text(before))
+        
+        # Add the bold text
+        bold_text = match.group(1)
+        rich_text.append(create_rich_text(bold_text, bold=True))
+        
+        last_end = match.end()
+    
+    # Add remaining text after last match
+    if last_end < len(text):
+        remaining = text[last_end:]
+        if remaining:
+            rich_text.append(create_rich_text(remaining))
+    
+    # If no matches, return the whole text as-is
+    if not rich_text:
+        rich_text.append(create_rich_text(text))
+    
+    return rich_text
+
+
+def create_bullet_with_markdown(text: str) -> dict:
+    """Create a bullet with **bold** markers parsed properly."""
+    return {
+        "type": "bulleted_list_item",
+        "bulleted_list_item": {
+            "rich_text": parse_bold_segments(text)
+        }
+    }
+
+
+def parse_markdown_to_blocks(markdown: str) -> list[dict]:
+    """Parse Pocket's markdown summary into proper Notion blocks.
+    
+    Handles:
+    - ### Headings → heading_3 blocks
+    - - Bullet items → bulleted_list_item blocks
+    - **bold** → bold annotations
+    - Regular paragraphs → paragraph blocks
+    
+    Returns a list of Notion block objects.
+    """
+    if not markdown:
+        return []
+    
+    blocks = []
+    lines = markdown.strip().split('\n')
+    
+    for line in lines:
+        line = line.rstrip()
+        
+        # Skip empty lines
+        if not line.strip():
+            continue
+        
+        # Heading (### text)
+        if line.startswith('### '):
+            heading_text = line[4:].strip()
+            blocks.append({
+                "type": "heading_3",
+                "heading_3": {
+                    "rich_text": parse_bold_segments(heading_text),
+                    "color": "default",
+                    "is_toggleable": False
+                }
+            })
+        
+        # Bullet point (- text or  - text for indented)
+        elif line.lstrip().startswith('- '):
+            # Remove leading whitespace and the "- "
+            bullet_text = line.lstrip()[2:].strip()
+            blocks.append({
+                "type": "bulleted_list_item",
+                "bulleted_list_item": {
+                    "rich_text": parse_bold_segments(bullet_text)
+                }
+            })
+        
+        # Regular paragraph
+        else:
+            blocks.append({
+                "type": "paragraph",
+                "paragraph": {
+                    "rich_text": parse_bold_segments(line)
+                }
+            })
+    
+    return blocks

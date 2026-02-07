@@ -103,18 +103,21 @@ class TestRecording:
         assert len(props["Tags"]["multi_select"]) == 2
 
     def test_to_notion_children_with_summary(self):
-        """Test page body includes summary callout."""
+        """Test page body includes summary as parsed blocks."""
         rec = Recording(
             id="abc",
-            summary="This is the AI summary.",
+            summary="### Heading\n- **Bold** item\n- Regular item",
         )
         children = rec.to_notion_children()
         
-        # Should have a callout for summary
-        callout = next((c for c in children if c.get("type") == "callout"), None)
-        assert callout is not None
-        assert "summary" in callout["callout"]["rich_text"][0]["text"]["content"].lower() or \
-               "This is the AI summary" in callout["callout"]["rich_text"][0]["text"]["content"]
+        # Should have parsed markdown blocks
+        heading = next((c for c in children if c.get("type") == "heading_3"), None)
+        assert heading is not None
+        assert heading["heading_3"]["rich_text"][0]["text"]["content"] == "Heading"
+        
+        # Should have bullet items
+        bullets = [c for c in children if c.get("type") == "bulleted_list_item"]
+        assert len(bullets) >= 2
 
     def test_to_notion_children_with_action_items(self):
         """Test page body includes action items as to-dos."""

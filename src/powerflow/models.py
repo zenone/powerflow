@@ -137,19 +137,16 @@ class Recording:
             create_todo,
             create_heading,
             format_duration,
+            parse_markdown_to_blocks,
         )
         
         children = []
         
-        # 1. Summary callout — the AI's interpretation
+        # 1. Summary — parsed from markdown into proper Notion blocks
         if self.summary:
-            children.append(
-                create_callout(
-                    self.summary,
-                    icon="💭",
-                    color="gray_background"
-                )
-            )
+            summary_blocks = parse_markdown_to_blocks(self.summary)
+            if summary_blocks:
+                children.extend(summary_blocks)
         
         # 2. Action items section — visually prominent
         if self.action_items:
