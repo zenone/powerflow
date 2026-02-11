@@ -919,3 +919,39 @@ Returns `len(recordings)` when dedup check fails — could report false positive
 3. **Input validation** — parse_interval should handle invalid input gracefully
 
 **Recommendation**: Use launchd service mode over the built-in daemon mode - launchd provides watchdog functionality automatically.
+
+---
+
+### notion.py Audit (2026-02-11)
+
+**Good patterns found**:
+- Session reuse (requests.Session for connection pooling)
+- Pagination handling in search_databases and query_database
+- Batch deduplication with chunking (100-item OR filter limit)
+- Connection test method for health checks
+
+**Issues identified**:
+1. **No retry logic** — `_request()` raises immediately, no handling for transient errors (429, 503)
+2. **No rate limiting** — Could exceed Notion's ~3 req/sec limit
+3. **No timeout** — `session.request()` could hang indefinitely
+4. **Silent fallback** — `create_property()` defaults unknown types to rich_text without warning
+5. **Presentation in API client** — `format_databases_for_display()` is UI concern, doesn't belong here
+
+**Cross-cutting pattern**: After 3 module audits (sync.py, daemon.py, notion.py), recurring themes:
+- No retry logic in any API client
+- No rate limiting
+- No timeouts
+- Minimal logging
+
+**Recommendation**: Create shared `utils/reliability.py` with:
+```python
+# Retry decorator with exponential backoff
+@retry(max_attempts=3, backoff_base=1.5, retriable_errors=(429, 500, 502, 503, 504))
+
+# Rate limiter (token bucket)
+@rate_limit(calls_per_second=3)
+
+# Timeout wrapper
+with timeout(seconds=30):
+    response = api_call()
+```
