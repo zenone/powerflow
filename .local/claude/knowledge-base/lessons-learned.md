@@ -886,3 +886,36 @@ def notion_request():
 Returns `len(recordings)` when dedup check fails — could report false positives.
 
 **Recommendation**: Return -1 or raise to indicate unknown state.
+
+---
+
+### Daemon Reliability Patterns (2026-02-11)
+
+**Context**: Audited `daemon.py` for reliability patterns.
+
+**Good patterns found**:
+- PID file with stale detection (check if process exists)
+- Graceful shutdown on SIGTERM/SIGINT with signal handlers
+- Retry logic with MAX_RETRIES and backoff delay
+- State persistence for monitoring (daemon_state.json)
+- 10-second sleep intervals for responsive shutdown
+- SIGKILL fallback if SIGTERM doesn't work
+
+**Areas for improvement**:
+1. **Log rotation** — daemon.log could grow indefinitely. Consider:
+   ```python
+   from logging.handlers import RotatingFileHandler
+   handler = RotatingFileHandler(LOG_FILE, maxBytes=10*1024*1024, backupCount=3)
+   ```
+
+2. **Atomic state writes** — Prevent corruption on crash:
+   ```python
+   def save_state(state: dict) -> None:
+       tmp_path = STATE_FILE.with_suffix('.tmp')
+       tmp_path.write_text(json.dumps(state, indent=2, default=str))
+       tmp_path.rename(STATE_FILE)  # Atomic on POSIX
+   ```
+
+3. **Input validation** — parse_interval should handle invalid input gracefully
+
+**Recommendation**: Use launchd service mode over the built-in daemon mode - launchd provides watchdog functionality automatically.
