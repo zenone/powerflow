@@ -845,3 +845,44 @@ print(f"Result: {created} created, {skipped} skipped")
 
 ### Lesson
 Run lint checks frequently during development. 258 errors is intimidating; 5 is not.
+
+---
+
+## sync.py Audit (2026-02-11)
+
+### Good Patterns Found
+- **Incremental sync**: Only fetches recordings since `last_sync` timestamp
+- **Batch deduplication**: Single Notion query for multiple pocket_ids (avoids N+1)
+- **Error accumulation**: Continues processing after individual failures
+- **Race condition handling**: `is_summary_complete` check prevents syncing before AI finishes
+- **Timezone awareness**: Proper handling of UTC timestamps
+
+### Issues Identified
+
+**1. No retry logic**
+Transient API failures (network hiccup, rate limit) cause immediate failure.
+
+**Recommendation**: Add exponential backoff:
+```python
+@retry(max_attempts=3, backoff_factor=2)
+def api_call():
+    ...
+```
+
+**2. No rate limiting**
+Could hit Notion API limits (3 req/sec) on large syncs.
+
+**Recommendation**: Add rate limiter:
+```python
+from ratelimit import limits, sleep_and_retry
+
+@sleep_and_retry
+@limits(calls=3, period=1)
+def notion_request():
+    ...
+```
+
+**3. Misleading fallback in get_pending_count**
+Returns `len(recordings)` when dedup check fails — could report false positives.
+
+**Recommendation**: Return -1 or raise to indicate unknown state.
