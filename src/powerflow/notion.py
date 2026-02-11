@@ -101,15 +101,15 @@ class NotionClient:
         pocket_id_property: str = "Inbox ID",
     ) -> set[str]:
         """Check which pocket_ids already exist in the database.
-        
+
         Uses OR filter to check multiple IDs in a single query.
         Chunks large lists to stay within Notion's filter limits.
-        
+
         Args:
             database_id: Target database
             pocket_ids: List of pocket_ids to check
             pocket_id_property: Name of the property storing pocket_id
-            
+
         Returns:
             Set of pocket_ids that already exist in the database
         """
@@ -149,13 +149,13 @@ class NotionClient:
         icon: dict = None,
     ) -> dict:
         """Create a new page in the database with optional body content.
-        
+
         Args:
             database_id: Target database ID
             properties: Page properties (database fields)
             children: Optional list of block objects for page body content
             icon: Optional page icon, e.g. {"type": "emoji", "emoji": "🎙️"}
-        
+
         Returns:
             Created page object
         """
@@ -207,11 +207,11 @@ class NotionClient:
     ) -> list[str]:
         """
         Ensure required properties exist in database.
-        
+
         Args:
             database_id: Database to check
             required_properties: Dict of property_name -> property_type
-        
+
         Returns:
             List of created property names
         """

@@ -1,5 +1,6 @@
 """Pocket AI API client."""
 
+import contextlib
 import os
 from datetime import datetime, timezone
 
@@ -72,10 +73,10 @@ class PocketClient:
     def fetch_recordings(self, since: datetime | None = None) -> list[Recording]:
         """
         Fetch all recordings, optionally filtered by created_at timestamp.
-        
+
         Args:
             since: Only fetch recordings created after this time. If None, fetch all.
-            
+
         Returns:
             List of Recording objects with full details.
         """
@@ -119,19 +120,14 @@ class PocketClient:
         duration_seconds = None
         duration_raw = data.get("duration") or data.get("durationSeconds")
         if duration_raw:
-            try:
+            with contextlib.suppress(ValueError, TypeError):
                 duration_seconds = int(duration_raw)
-            except (ValueError, TypeError):
-                pass
 
         # Tags
         tags = []
         tags_data = data.get("tags") or []
         for tag in tags_data:
-            if isinstance(tag, dict):
-                tag_name = tag.get("name") or tag.get("label")
-            else:
-                tag_name = str(tag)
+            tag_name = tag.get("name") or tag.get("label") if isinstance(tag, dict) else str(tag)
             if tag_name:
                 tags.append(tag_name)
 

@@ -61,7 +61,7 @@ def print_step(msg: str, end: str = "... ") -> None:
 def get_or_prompt_pocket_key(config: Config) -> str | None:
     """
     Get Pocket API key from config, env, or prompt user.
-    
+
     Priority:
     1. Environment variable (POCKET_API_KEY)
     2. Config file
@@ -95,7 +95,7 @@ def get_or_prompt_pocket_key(config: Config) -> str | None:
 def get_or_prompt_notion_key(config: Config) -> str | None:
     """
     Get Notion API key from config, env, or prompt user.
-    
+
     Priority:
     1. Environment variable (NOTION_API_KEY)
     2. Config file
@@ -130,7 +130,7 @@ def get_or_prompt_notion_key(config: Config) -> str | None:
 def verify_pocket_key(key: str) -> tuple[bool, str]:
     """
     Verify Pocket API key works.
-    
+
     Returns:
         (success, error_message)
     """
@@ -153,7 +153,7 @@ def verify_pocket_key(key: str) -> tuple[bool, str]:
 def verify_notion_key(key: str) -> tuple[bool, str]:
     """
     Verify Notion API key works.
-    
+
     Returns:
         (success, error_message)
     """
@@ -180,7 +180,7 @@ def verify_notion_key(key: str) -> tuple[bool, str]:
 def cmd_setup() -> int:
     """
     Interactive setup wizard.
-    
+
     Business Logic:
     1. Get/prompt for API keys
     2. Verify both keys work
@@ -189,7 +189,7 @@ def cmd_setup() -> int:
     5. Analyze schema and create property mapping
     6. Optionally create missing properties
     7. Save configuration
-    
+
     This is idempotent - can be run multiple times safely.
     """
     print("\n🚀 Power-Flow Setup\n")
@@ -274,7 +274,10 @@ def cmd_setup() -> int:
                     try:
                         db_info = notion.get_database(db_id)
                         title_parts = db_info.get("title", [])
-                        title = title_parts[0].get("plain_text", "Untitled") if title_parts else "Untitled"
+                        title = (
+                            title_parts[0].get("plain_text", "Untitled")
+                            if title_parts else "Untitled"
+                        )
                         selected = {"id": db_id, "title": title, "emoji": "📄"}
                     except Exception:
                         print_error("Could not access that database.")
@@ -446,7 +449,7 @@ def cmd_setup() -> int:
 def cmd_sync(dry_run: bool = False) -> int:
     """
     Sync recordings from Pocket to Notion Inbox.
-    
+
     Business Logic:
     1. Load configuration
     2. Verify API keys are available
@@ -456,7 +459,7 @@ def cmd_sync(dry_run: bool = False) -> int:
        b. If exists → skip
        c. If not exists → create with summary, action items, transcript
     5. Report results
-    
+
     Each recording becomes an Inbox item for triage (task, note, project, archive).
     CRITICAL: Never create duplicates. Always check before creating.
     """
@@ -599,7 +602,8 @@ def cmd_config(action: str = "show") -> int:
             return 0
 
         try:
-            confirm = input("Reset all configuration? This cannot be undone. [y/N]: ").strip().lower()
+            prompt = "Reset all configuration? This cannot be undone. [y/N]: "
+            confirm = input(prompt).strip().lower()
         except (KeyboardInterrupt, EOFError):
             print()
             return 1
@@ -626,7 +630,7 @@ def cmd_config(action: str = "show") -> int:
 def cmd_daemon(args: list[str]) -> int:
     """
     Manage background sync daemon.
-    
+
     Subcommands:
     - start [--interval Xm] [--foreground]: Start daemon
     - stop: Stop daemon
@@ -726,8 +730,8 @@ def print_usage():
     print("""
 Power-Flow: Sync Pocket AI recordings to Notion Inbox
 
-Each recording becomes an Inbox item for you to triage into tasks, notes, 
-projects, or archive. Action items extracted by Pocket AI appear as to-do 
+Each recording becomes an Inbox item for you to triage into tasks, notes,
+projects, or archive. Action items extracted by Pocket AI appear as to-do
 checkboxes within the page.
 
 Usage:

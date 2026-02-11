@@ -38,16 +38,16 @@ class SyncEngine:
     def sync(self, dry_run: bool = False) -> SyncResult:
         """
         Sync recordings from Pocket to Notion.
-        
+
         Each recording becomes an Inbox item. The user then processes/triages
         it into a task, note, project, or archives it.
-        
+
         Uses incremental sync (only fetch new recordings) and batch dedup
         (check multiple pocket_ids in one query) for efficiency.
-        
+
         Args:
             dry_run: If True, don't actually create pages
-            
+
         Returns:
             SyncResult with counts and any errors
         """
@@ -120,7 +120,7 @@ class SyncEngine:
 
     def get_pending_count(self) -> int:
         """Get count of recordings that would be synced (not yet in Notion).
-        
+
         Only counts recordings that:
         1. Don't already exist in Notion (dedup check)
         2. Have completed AI processing (summary check)

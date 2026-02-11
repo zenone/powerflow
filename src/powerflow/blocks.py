@@ -68,7 +68,7 @@ def create_callout(
     color: str = "default"
 ) -> dict:
     """Create a callout block with icon and colored background.
-    
+
     Callouts are perfect for highlighting important context or notes.
     """
     return {
@@ -99,7 +99,7 @@ def create_toggle(title: str, children: list[dict]) -> dict:
 
 def create_bullet(text: str, bold_prefix: str | None = None) -> dict:
     """Create a bulleted list item, optionally with a bold label prefix.
-    
+
     Example: create_bullet("Morning voice note", "Recording")
     Renders as: • **Recording:** Morning voice note
     """
@@ -179,8 +179,8 @@ def get_priority_style(priority: str | None) -> dict:
 
 def parse_bold_segments(text: str) -> list[dict]:
     """Parse **bold** markers and return rich_text array with proper annotations.
-    
-    Example: "Hello **world** and **foo**" 
+
+    Example: "Hello **world** and **foo**"
     Returns: [{"text": "Hello "}, {"text": "world", bold}, {"text": " and "}, {"text": "foo", bold}]
     """
     import re
@@ -228,13 +228,13 @@ def create_bullet_with_markdown(text: str) -> dict:
 
 def parse_markdown_to_blocks(markdown: str) -> list[dict]:
     """Parse Pocket's markdown summary into proper Notion blocks.
-    
+
     Handles:
     - ### Headings → heading_3 blocks
     - - Bullet items → bulleted_list_item blocks
     - **bold** → bold annotations
     - Regular paragraphs → paragraph blocks
-    
+
     Returns a list of Notion block objects.
     """
     if not markdown:

@@ -58,16 +58,16 @@ class Recording:
     @property
     def is_summary_complete(self) -> bool:
         """Check if AI summary processing has completed.
-        
+
         A recording is considered ready for sync when it has meaningful
         AI-generated content. This prevents syncing recordings that are
         still being processed by Pocket's AI.
-        
+
         Returns True if ANY of these are present:
         - Non-empty summary (markdown)
         - At least one action item
         - Mind map nodes
-        
+
         Returns False if the recording has no AI-generated content,
         indicating it's likely still processing.
         """
@@ -97,7 +97,7 @@ class Recording:
 
     def get_icon(self) -> dict:
         """Get Notion icon based on tags.
-        
+
         Returns first matching tag emoji, or default mic emoji.
         """
         for tag in self.tags:
@@ -138,7 +138,7 @@ class Recording:
 
     def _build_mind_map_tree(self) -> list[dict]:
         """Build mind map blocks with visual hierarchy.
-        
+
         Uses indentation markers since Notion API doesn't support
         deeply nested children in page creation.
         """
@@ -204,7 +204,7 @@ class Recording:
 
     def to_notion_children(self) -> list[dict]:
         """Build the page body blocks with Michelin-star attention to detail.
-        
+
         Structure:
         1. Summary callout (if available) — gray background, thought bubble
         2. Action items callout (if any) — yellow background, checkbox icon

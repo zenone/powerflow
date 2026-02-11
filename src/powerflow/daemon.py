@@ -37,7 +37,7 @@ MAX_RETRIES = 2
 def parse_interval(interval_str: str) -> int:
     """
     Parse interval string to minutes.
-    
+
     Examples: "5m", "15m", "1h", "30"
     """
     interval_str = interval_str.strip().lower()
@@ -87,7 +87,7 @@ def load_state() -> dict:
 def send_notification(title: str, message: str) -> None:
     """
     Send a desktop notification (macOS).
-    
+
     Fails silently on other platforms or if notification fails.
     """
     if sys.platform != "darwin":
@@ -108,7 +108,7 @@ def send_notification(title: str, message: str) -> None:
 def is_running() -> tuple[bool, int | None]:
     """
     Check if daemon is already running.
-    
+
     Returns:
         (is_running, pid)
     """
@@ -157,7 +157,7 @@ class PowerFlowDaemon:
     def _do_sync(self) -> dict:
         """
         Perform a single sync operation.
-        
+
         Returns:
             Result dict with created, skipped, failed counts
         """
@@ -228,7 +228,11 @@ class PowerFlowDaemon:
 
                     # Retry logic: if failed, retry sooner (up to MAX_RETRIES)
                     if consecutive_failures <= MAX_RETRIES:
-                        self.logger.info(f"Will retry in {RETRY_DELAY_SECONDS}s (attempt {consecutive_failures}/{MAX_RETRIES})")
+                        retry_msg = (
+                            f"Will retry in {RETRY_DELAY_SECONDS}s "
+                            f"(attempt {consecutive_failures}/{MAX_RETRIES})"
+                        )
+                        self.logger.info(retry_msg)
                         wait_seconds = RETRY_DELAY_SECONDS
                     else:
                         self.logger.warning("Max retries reached, waiting for next interval")
@@ -240,7 +244,8 @@ class PowerFlowDaemon:
                         )
                 else:
                     consecutive_failures = 0  # Reset on success
-                    pending_str = f", pending={result['pending']}" if result.get('pending', 0) > 0 else ""
+                    pending = result.get('pending', 0)
+                    pending_str = f", pending={pending}" if pending > 0 else ""
                     self.logger.info(
                         f"Sync complete in {duration:.1f}s: "
                         f"created={result['created']}, "
@@ -285,11 +290,11 @@ class PowerFlowDaemon:
 def start_daemon(interval_minutes: int = DEFAULT_INTERVAL_MINUTES, foreground: bool = False) -> int:
     """
     Start the daemon.
-    
+
     Args:
         interval_minutes: Sync interval
         foreground: Run in foreground (don't daemonize)
-    
+
     Returns:
         Exit code (0 = success)
     """
@@ -341,7 +346,7 @@ def start_daemon(interval_minutes: int = DEFAULT_INTERVAL_MINUTES, foreground: b
 def stop_daemon() -> int:
     """
     Stop the daemon.
-    
+
     Returns:
         Exit code (0 = success)
     """
@@ -380,7 +385,7 @@ def stop_daemon() -> int:
 def daemon_status() -> int:
     """
     Show daemon status.
-    
+
     Returns:
         Exit code (0 = running, 1 = not running)
     """
@@ -407,7 +412,9 @@ def daemon_status() -> int:
         if "error" in result:
             print(f"   Result:    ❌ {result['error']}")
         elif result:
-            print(f"   Result:    ✅ {result.get('created', 0)} created, {result.get('skipped', 0)} skipped")
+            created = result.get('created', 0)
+            skipped = result.get('skipped', 0)
+            print(f"   Result:    ✅ {created} created, {skipped} skipped")
 
     if running and state.get("next_sync"):
         print(f"   Next sync: {state['next_sync']}")
@@ -434,25 +441,25 @@ def generate_launchd_plist(interval_minutes: int = DEFAULT_INTERVAL_MINUTES) -> 
 <dict>
     <key>Label</key>
     <string>com.powerflow.sync</string>
-    
+
     <key>ProgramArguments</key>
     <array>
         <string>{powerflow_path}</string>
         <string>sync</string>
     </array>
-    
+
     <key>StartInterval</key>
     <integer>{interval_minutes * 60}</integer>
-    
+
     <key>RunAtLoad</key>
     <true/>
-    
+
     <key>StandardOutPath</key>
     <string>{LOG_FILE}</string>
-    
+
     <key>StandardErrorPath</key>
     <string>{LOG_FILE}</string>
-    
+
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
@@ -470,7 +477,7 @@ def generate_launchd_plist(interval_minutes: int = DEFAULT_INTERVAL_MINUTES) -> 
 def install_service(interval_minutes: int = DEFAULT_INTERVAL_MINUTES) -> int:
     """
     Install as system service.
-    
+
     Returns:
         Exit code (0 = success)
     """
@@ -537,7 +544,7 @@ def install_service(interval_minutes: int = DEFAULT_INTERVAL_MINUTES) -> int:
 def uninstall_service() -> int:
     """
     Uninstall system service.
-    
+
     Returns:
         Exit code (0 = success)
     """
