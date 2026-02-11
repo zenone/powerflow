@@ -785,3 +785,63 @@ Added 7 tests for the new behavior:
 
 ### Lesson
 When integrating with AI processing pipelines, always account for asynchronous processing. Data may be available before it's fully processed.
+
+---
+
+## Lint Maintenance (2026-02-11)
+
+### Issue
+258 ruff lint errors accumulated over development, primarily:
+- W293: Blank lines with whitespace
+- E501: Lines too long (>100 chars)
+- Unused imports
+- Missing type annotations
+
+### Solution
+Batch fix with ruff:
+```bash
+ruff check src/ --fix --unsafe-fixes
+```
+
+Fixed 253 errors automatically. Remaining 5 E501 (line length) required manual refactoring.
+
+### Prevention
+Add pre-commit hook:
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.2.0
+    hooks:
+      - id: ruff
+        args: [--fix]
+```
+
+Or add to CI:
+```yaml
+- name: Lint
+  run: ruff check src/
+```
+
+### Key Patterns for E501 Fixes
+```python
+# Bad: Long ternary
+title = parts[0].get("text", "Untitled") if parts else "Untitled"
+
+# Good: Multi-line ternary
+title = (
+    parts[0].get("text", "Untitled")
+    if parts else "Untitled"
+)
+
+# Bad: Long f-string
+print(f"Result: {result.get('created', 0)} created, {result.get('skipped', 0)} skipped")
+
+# Good: Extract variables
+created = result.get('created', 0)
+skipped = result.get('skipped', 0)
+print(f"Result: {created} created, {skipped} skipped")
+```
+
+### Lesson
+Run lint checks frequently during development. 258 errors is intimidating; 5 is not.
