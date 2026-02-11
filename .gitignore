@@ -1,5 +1,4 @@
 # Local configuration
-.local/
 
 # Python
 .venv/
@@ -37,3 +36,7 @@ htmlcov/
 
 # Logs
 *.log
+
+# Local state (not tracked)
+.local/state/
+.local/settings.json

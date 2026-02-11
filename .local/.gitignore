@@ -1,0 +1,4 @@
+# Keep everything in .local tracked EXCEPT:
+state/
+settings.json
+*.local

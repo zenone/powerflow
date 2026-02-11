@@ -1,10 +1,7 @@
 """Notion API client."""
 
+
 import requests
-from typing import Optional
-
-from .models import ActionItem
-
 
 BASE_URL = "https://api.notion.com/v1"
 NOTION_VERSION = "2022-06-28"
@@ -61,7 +58,7 @@ class NotionClient:
     def query_database(
         self,
         database_id: str,
-        filter_obj: Optional[dict] = None,
+        filter_obj: dict | None = None,
         page_size: int = 100,
     ) -> list[dict]:
         """Query database pages."""
@@ -118,13 +115,13 @@ class NotionClient:
         """
         if not pocket_ids:
             return set()
-        
+
         existing = set()
         chunk_size = 100  # Notion OR filter limit
-        
+
         for i in range(0, len(pocket_ids), chunk_size):
             chunk = pocket_ids[i:i + chunk_size]
-            
+
             # Build OR filter
             filter_obj = {
                 "or": [
@@ -132,16 +129,16 @@ class NotionClient:
                     for pid in chunk
                 ]
             }
-            
+
             results = self.query_database(database_id, filter_obj)
-            
+
             # Extract pocket_ids from results
             for page in results:
                 prop = page.get("properties", {}).get(pocket_id_property, {})
                 rich_text = prop.get("rich_text", [])
                 if rich_text:
                     existing.add(rich_text[0].get("plain_text", ""))
-        
+
         return existing
 
     def create_page(

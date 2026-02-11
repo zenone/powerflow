@@ -1,12 +1,11 @@
 """Pocket AI API client."""
 
 import os
-import requests
 from datetime import datetime, timezone
-from typing import Optional
+
+import requests
 
 from .models import ActionItem, Recording
-
 
 # Base URL from official docs: https://docs.heypocketai.com/docs/api
 DEFAULT_BASE_URL = "https://public.heypocketai.com/api/v1"
@@ -16,7 +15,7 @@ BASE_URL = os.getenv("POCKET_API_URL", DEFAULT_BASE_URL)
 POCKET_WEB_URL = "https://heypocket.com"
 
 
-def parse_datetime(dt_str: Optional[str]) -> Optional[datetime]:
+def parse_datetime(dt_str: str | None) -> datetime | None:
     """Parse an ISO datetime string, handling timezone properly."""
     if not dt_str:
         return None
@@ -70,7 +69,7 @@ class PocketClient:
         data = self._request("POST", "/public/search", json={"query": query})
         return data.get("data", [])
 
-    def fetch_recordings(self, since: Optional[datetime] = None) -> list[Recording]:
+    def fetch_recordings(self, since: datetime | None = None) -> list[Recording]:
         """
         Fetch all recordings, optionally filtered by created_at timestamp.
         
@@ -106,7 +105,7 @@ class PocketClient:
 
         return recordings
 
-    def _parse_recording(self, data: dict) -> Optional[Recording]:
+    def _parse_recording(self, data: dict) -> Recording | None:
         """Parse raw API response into a Recording object."""
         recording_id = data.get("id")
         if not recording_id:
@@ -115,7 +114,7 @@ class PocketClient:
         # Extract basic fields
         title = data.get("title") or data.get("name")
         created_at = parse_datetime(data.get("createdAt") or data.get("created_at"))
-        
+
         # Duration
         duration_seconds = None
         duration_raw = data.get("duration") or data.get("durationSeconds")
@@ -144,13 +143,13 @@ class PocketClient:
 
         # Summarizations
         summarizations = data.get("summarizations", {})
-        
+
         # Summary (API returns markdown field, not summary)
         summary = None
         v2_summary = summarizations.get("v2_summary", {})
         if isinstance(v2_summary, dict):
             summary = v2_summary.get("markdown") or v2_summary.get("summary")
-        
+
         # Mind map (hierarchical outline)
         mind_map_nodes = []
         v2_mind_map = summarizations.get("v2_mind_map", {})
@@ -161,11 +160,11 @@ class PocketClient:
         action_items = []
         v2_actions = summarizations.get("v2_action_items", {})
         actions_list = v2_actions.get("actions", []) if isinstance(v2_actions, dict) else []
-        
+
         for action in actions_list:
             if not isinstance(action, dict):
                 continue
-                
+
             due_date = None
             if action.get("dueDate"):
                 due_date = parse_datetime(action["dueDate"])

@@ -4,8 +4,6 @@ This module provides functions to create visually stunning Notion blocks
 following Michelin-star attention to detail.
 """
 
-from typing import Optional
-
 
 # Priority-based visual styling
 PRIORITY_STYLES = {
@@ -38,18 +36,18 @@ def format_duration(seconds: int) -> str:
     return f"{hours}:{mins:02d}:{secs:02d}"
 
 
-def create_rich_text(content: str, bold: bool = False, italic: bool = False, 
-                     color: str = "default", link: Optional[str] = None) -> dict:
+def create_rich_text(content: str, bold: bool = False, italic: bool = False,
+                     color: str = "default", link: str | None = None) -> dict:
     """Create a rich text object with optional styling."""
     text_obj = {"content": safe_text(content)}
     if link:
         text_obj["link"] = {"url": link}
-    
+
     result = {
         "type": "text",
         "text": text_obj,
     }
-    
+
     # Only add annotations if non-default
     if bold or italic or color != "default":
         result["annotations"] = {
@@ -60,7 +58,7 @@ def create_rich_text(content: str, bold: bool = False, italic: bool = False,
             "code": False,
             "color": color,
         }
-    
+
     return result
 
 
@@ -99,20 +97,20 @@ def create_toggle(title: str, children: list[dict]) -> dict:
     }
 
 
-def create_bullet(text: str, bold_prefix: Optional[str] = None) -> dict:
+def create_bullet(text: str, bold_prefix: str | None = None) -> dict:
     """Create a bulleted list item, optionally with a bold label prefix.
     
     Example: create_bullet("Morning voice note", "Recording")
     Renders as: • **Recording:** Morning voice note
     """
     rich_text = []
-    
+
     if bold_prefix:
         rich_text.append(create_rich_text(f"{bold_prefix}: ", bold=True))
         rich_text.append(create_rich_text(text))
     else:
         rich_text.append(create_rich_text(text))
-    
+
     return {
         "type": "bulleted_list_item",
         "bulleted_list_item": {
@@ -121,7 +119,7 @@ def create_bullet(text: str, bold_prefix: Optional[str] = None) -> dict:
     }
 
 
-def create_paragraph(text: str, link: Optional[str] = None, color: str = "default") -> dict:
+def create_paragraph(text: str, link: str | None = None, color: str = "default") -> dict:
     """Create a paragraph block, optionally as a link."""
     return {
         "type": "paragraph",
@@ -158,7 +156,7 @@ def create_heading(text: str, level: int = 2, color: str = "default") -> dict:
     """Create a heading block (level 1, 2, or 3)."""
     level = max(1, min(3, level))  # Clamp to 1-3
     heading_key = f"heading_{level}"
-    
+
     return {
         "type": heading_key,
         heading_key: {
@@ -169,7 +167,7 @@ def create_heading(text: str, level: int = 2, color: str = "default") -> dict:
     }
 
 
-def get_priority_style(priority: Optional[str]) -> dict:
+def get_priority_style(priority: str | None) -> dict:
     """Get the visual style for a given priority level."""
     # Normalize priority string
     if priority:
@@ -187,34 +185,34 @@ def parse_bold_segments(text: str) -> list[dict]:
     """
     import re
     rich_text = []
-    
-    # Pattern matches **text** 
+
+    # Pattern matches **text**
     pattern = r'\*\*([^*]+)\*\*'
     last_end = 0
-    
+
     for match in re.finditer(pattern, text):
         # Add text before the match (non-bold)
         if match.start() > last_end:
             before = text[last_end:match.start()]
             if before:
                 rich_text.append(create_rich_text(before))
-        
+
         # Add the bold text
         bold_text = match.group(1)
         rich_text.append(create_rich_text(bold_text, bold=True))
-        
+
         last_end = match.end()
-    
+
     # Add remaining text after last match
     if last_end < len(text):
         remaining = text[last_end:]
         if remaining:
             rich_text.append(create_rich_text(remaining))
-    
+
     # If no matches, return the whole text as-is
     if not rich_text:
         rich_text.append(create_rich_text(text))
-    
+
     return rich_text
 
 
@@ -241,17 +239,17 @@ def parse_markdown_to_blocks(markdown: str) -> list[dict]:
     """
     if not markdown:
         return []
-    
+
     blocks = []
     lines = markdown.strip().split('\n')
-    
+
     for line in lines:
         line = line.rstrip()
-        
+
         # Skip empty lines
         if not line.strip():
             continue
-        
+
         # Heading (### text)
         if line.startswith('### '):
             heading_text = line[4:].strip()
@@ -263,7 +261,7 @@ def parse_markdown_to_blocks(markdown: str) -> list[dict]:
                     "is_toggleable": False
                 }
             })
-        
+
         # Bullet point (- text or  - text for indented)
         elif line.lstrip().startswith('- '):
             # Remove leading whitespace and the "- "
@@ -274,7 +272,7 @@ def parse_markdown_to_blocks(markdown: str) -> list[dict]:
                     "rich_text": parse_bold_segments(bullet_text)
                 }
             })
-        
+
         # Regular paragraph
         else:
             blocks.append({
@@ -283,5 +281,5 @@ def parse_markdown_to_blocks(markdown: str) -> list[dict]:
                     "rich_text": parse_bold_segments(line)
                 }
             })
-    
+
     return blocks

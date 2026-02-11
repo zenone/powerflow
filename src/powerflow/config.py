@@ -2,11 +2,9 @@
 
 import json
 import os
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
-
 
 CONFIG_DIR = Path.home() / ".powerflow"
 CONFIG_FILE = CONFIG_DIR / "config.json"
@@ -16,8 +14,8 @@ CONFIG_FILE = CONFIG_DIR / "config.json"
 class NotionConfig:
     """Notion-specific configuration."""
 
-    database_id: Optional[str] = None
-    database_name: Optional[str] = None
+    database_id: str | None = None
+    database_name: str | None = None
     property_map: dict = field(default_factory=lambda: {
         "title": "Name",
         "pocket_id": "Inbox ID",
@@ -32,7 +30,7 @@ class NotionConfig:
 class PocketConfig:
     """Pocket-specific configuration."""
 
-    last_sync: Optional[str] = None  # ISO timestamp
+    last_sync: str | None = None  # ISO timestamp
 
 
 @dataclass
@@ -41,7 +39,7 @@ class Config:
 
     notion: NotionConfig = field(default_factory=NotionConfig)
     pocket: PocketConfig = field(default_factory=PocketConfig)
-    created_at: Optional[str] = None
+    created_at: str | None = None
 
     @classmethod
     def load(cls) -> "Config":
@@ -86,12 +84,12 @@ class Config:
         return bool(self.notion.database_id)
 
 
-def get_pocket_api_key() -> Optional[str]:
+def get_pocket_api_key() -> str | None:
     """Get Pocket API key from environment."""
     return os.getenv("POCKET_API_KEY")
 
 
-def get_notion_api_key() -> Optional[str]:
+def get_notion_api_key() -> str | None:
     """Get Notion API key from environment."""
     return os.getenv("NOTION_API_KEY")
 

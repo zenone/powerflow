@@ -16,19 +16,14 @@ UX Principles:
 
 import os
 import sys
-from typing import Optional
 
 from .config import (
-    Config,
-    get_pocket_api_key,
-    get_notion_api_key,
-    validate_env,
     CONFIG_FILE,
+    Config,
 )
 from .notion import NotionClient
 from .pocket import PocketClient
 from .sync import SyncEngine
-
 
 # =============================================================================
 # OUTPUT HELPERS
@@ -63,7 +58,7 @@ def print_step(msg: str, end: str = "... ") -> None:
 # API KEY MANAGEMENT
 # =============================================================================
 
-def get_or_prompt_pocket_key(config: Config) -> Optional[str]:
+def get_or_prompt_pocket_key(config: Config) -> str | None:
     """
     Get Pocket API key from config, env, or prompt user.
     
@@ -76,11 +71,11 @@ def get_or_prompt_pocket_key(config: Config) -> Optional[str]:
     key = os.getenv("POCKET_API_KEY")
     if key:
         return key
-    
+
     # Check config
     if hasattr(config, 'pocket_api_key') and config.pocket_api_key:
         return config.pocket_api_key
-    
+
     # Prompt user
     print()
     print("🔑 Pocket API Key Required")
@@ -93,11 +88,11 @@ def get_or_prompt_pocket_key(config: Config) -> Optional[str]:
     except (KeyboardInterrupt, EOFError):
         print()
         return None
-    
+
     return None
 
 
-def get_or_prompt_notion_key(config: Config) -> Optional[str]:
+def get_or_prompt_notion_key(config: Config) -> str | None:
     """
     Get Notion API key from config, env, or prompt user.
     
@@ -110,11 +105,11 @@ def get_or_prompt_notion_key(config: Config) -> Optional[str]:
     key = os.getenv("NOTION_API_KEY")
     if key:
         return key
-    
+
     # Check config
     if hasattr(config, 'notion_api_key') and config.notion_api_key:
         return config.notion_api_key
-    
+
     # Prompt user
     print()
     print("🔑 Notion API Key Required")
@@ -128,7 +123,7 @@ def get_or_prompt_notion_key(config: Config) -> Optional[str]:
     except (KeyboardInterrupt, EOFError):
         print()
         return None
-    
+
     return None
 
 
@@ -236,7 +231,7 @@ def cmd_setup() -> int:
     # Step 5: Discover databases
     print("\n📚 Scanning for accessible databases...\n")
     notion = NotionClient(notion_key)
-    
+
     try:
         databases = notion.search_databases()
     except Exception as e:
@@ -268,9 +263,9 @@ def cmd_setup() -> int:
             choice = input(f"\nSelect database [1-{len(formatted) + 1}]: ").strip()
             if not choice:
                 continue
-                
+
             choice_num = int(choice)
-            
+
             if 1 <= choice_num <= len(formatted):
                 selected = formatted[choice_num - 1]
             elif choice_num == len(formatted) + 1:
@@ -295,14 +290,14 @@ def cmd_setup() -> int:
     print(f"\n✅ Selected: {selected['emoji']} {selected['title']}")
 
     # Step 7: Analyze schema and create mapping
-    print(f"\n📊 Analyzing schema...\n")
-    
+    print("\n📊 Analyzing schema...\n")
+
     try:
         schema = notion.get_database_schema(selected["id"])
     except Exception as e:
         print_error(f"Failed to get database schema: {e}")
         return 1
-    
+
     schema_names = {name: prop.get("type") for name, prop in schema.items()}
 
     # Build property mapping
@@ -331,7 +326,7 @@ def cmd_setup() -> int:
             pocket_id_field = name
             existing_mappings.append(("pocket_id", name, "existing"))
             break
-    
+
     if not pocket_id_field:
         # Must create this field - it's required for deduplication
         to_create.append(("pocket_id", "Inbox ID", "rich_text"))
@@ -343,7 +338,7 @@ def cmd_setup() -> int:
             context_field = name
             existing_mappings.append(("Context", name, "existing"))
             break
-    
+
     if not context_field:
         # Context field not found - create it
         to_create.append(("Context", "Action Context", "rich_text"))
@@ -355,7 +350,7 @@ def cmd_setup() -> int:
             source_field = name
             existing_mappings.append(("Source", name, "existing"))
             break
-    
+
     if not source_field:
         to_create.append(("Source", "Source", "url"))
 
@@ -366,7 +361,7 @@ def cmd_setup() -> int:
             tags_field = name
             existing_mappings.append(("Tags", name, "existing"))
             break
-    
+
     if not tags_field:
         to_create.append(("Tags", "Tags", "multi_select"))
 
@@ -388,7 +383,7 @@ def cmd_setup() -> int:
         except (KeyboardInterrupt, EOFError):
             print("\n\nSetup cancelled.")
             return 1
-            
+
         if confirm and confirm not in ["y", "yes", ""]:
             print("\nSetup cancelled. Missing properties are required for sync.")
             print("Run setup again when ready.")
@@ -408,7 +403,7 @@ def cmd_setup() -> int:
 
     # Step 9: Build and save configuration
     property_map = {"title": "Name"}
-    
+
     # Add mappings from existing
     field_mapping = {
         "Priority": "priority",
@@ -418,11 +413,11 @@ def cmd_setup() -> int:
         "Source": "source_url",
         "Tags": "tags",
     }
-    
+
     for pocket_field, notion_field, _ in existing_mappings:
         if pocket_field in field_mapping:
             property_map[field_mapping[pocket_field]] = notion_field
-    
+
     # Add mappings from created
     for pocket_field, notion_field, _ in to_create:
         if pocket_field in field_mapping:
@@ -439,7 +434,7 @@ def cmd_setup() -> int:
     config.save()
 
     print(f"\n✅ Config saved: {CONFIG_FILE}")
-    print(f"\n🎉 Setup complete! Run 'powerflow sync' to start syncing.\n")
+    print("\n🎉 Setup complete! Run 'powerflow sync' to start syncing.\n")
 
     return 0
 
@@ -468,12 +463,12 @@ def cmd_sync(dry_run: bool = False) -> int:
     # Get API keys
     pocket_key = os.getenv("POCKET_API_KEY")
     notion_key = os.getenv("NOTION_API_KEY")
-    
+
     if not pocket_key:
         print_error("Pocket API key not found.")
         print("   Set POCKET_API_KEY environment variable.")
         return 1
-    
+
     if not notion_key:
         print_error("Notion API key not found.")
         print("   Set NOTION_API_KEY environment variable.")
@@ -591,7 +586,7 @@ def cmd_config(action: str = "show") -> int:
         print(f"   Database Name: {config.notion.database_name}")
         print(f"   Created:       {config.created_at}")
         print(f"   Last Sync:     {config.pocket.last_sync or 'Never'}")
-        print(f"\n   Property Mapping:")
+        print("\n   Property Mapping:")
         for pocket, notion in config.notion.property_map.items():
             print(f"      {pocket} → {notion}")
         print(f"\n   Config file: {CONFIG_FILE}")
@@ -602,13 +597,13 @@ def cmd_config(action: str = "show") -> int:
         if not CONFIG_FILE.exists():
             print_info("No configuration to reset.")
             return 0
-        
+
         try:
             confirm = input("Reset all configuration? This cannot be undone. [y/N]: ").strip().lower()
         except (KeyboardInterrupt, EOFError):
             print()
             return 1
-            
+
         if confirm == "y":
             CONFIG_FILE.unlink()
             print_success("Configuration reset.")
@@ -640,14 +635,14 @@ def cmd_daemon(args: list[str]) -> int:
     - uninstall: Remove system service
     """
     from . import daemon
-    
+
     if not args:
         print_error("Missing daemon subcommand")
         print("   Use: powerflow daemon start|stop|status|install|uninstall")
         return 1
-    
+
     subcommand = args[0].lower()
-    
+
     # Parse --interval flag
     interval = daemon.DEFAULT_INTERVAL_MINUTES
     for i, arg in enumerate(args):
@@ -658,9 +653,9 @@ def cmd_daemon(args: list[str]) -> int:
                 print_error(f"Invalid interval: {args[i + 1]}")
                 print("   Examples: 5m, 15m, 30m, 1h")
                 return 1
-    
+
     foreground = "--foreground" in args or "-f" in args
-    
+
     if subcommand == "start":
         return daemon.start_daemon(interval, foreground=foreground)
     elif subcommand == "stop":
@@ -681,7 +676,7 @@ def cmd_daemon(args: list[str]) -> int:
 # MAIN ENTRY POINT
 # =============================================================================
 
-def main(args: Optional[list[str]] = None) -> int:
+def main(args: list[str] | None = None) -> int:
     """Main entry point."""
     if args is None:
         args = sys.argv[1:]

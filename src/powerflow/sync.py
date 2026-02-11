@@ -1,15 +1,14 @@
 """Core sync logic for Power-Flow."""
 
 from datetime import datetime, timezone
-from typing import Optional
 
 from .config import Config
-from .models import Recording, SyncResult
+from .models import SyncResult
 from .notion import NotionClient
 from .pocket import PocketClient
 
 
-def parse_last_sync(last_sync: Optional[str]) -> Optional[datetime]:
+def parse_last_sync(last_sync: str | None) -> datetime | None:
     """Parse last_sync string into timezone-aware datetime."""
     if not last_sync:
         return None
@@ -138,7 +137,7 @@ class SyncEngine:
             recordings = self.pocket.fetch_recordings(since=last_sync)
         except Exception:
             return 0
-        
+
         if not recordings:
             return 0
 
