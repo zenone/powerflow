@@ -35,31 +35,71 @@ MAX_RETRIES = 2
 
 
 def parse_interval(interval_str: str) -> int:
-    """
-    Parse interval string to minutes.
+    """Parse interval string to minutes.
 
     Examples: "5m", "15m", "1h", "30"
+
+    Args:
+        interval_str: Interval string (e.g., "5m", "1h", "30")
+
+    Returns:
+        Interval in minutes (minimum 1, maximum 1440)
+
+    Raises:
+        ValueError: If interval_str is invalid
     """
+    if not interval_str:
+        return DEFAULT_INTERVAL_MINUTES
+
     interval_str = interval_str.strip().lower()
 
-    if interval_str.endswith("h"):
-        return int(interval_str[:-1]) * 60
-    elif interval_str.endswith("m"):
-        return int(interval_str[:-1])
-    else:
-        # Assume minutes if no suffix
-        return int(interval_str)
+    try:
+        if interval_str.endswith("h"):
+            minutes = int(interval_str[:-1]) * 60
+        elif interval_str.endswith("m"):
+            minutes = int(interval_str[:-1])
+        else:
+            # Assume minutes if no suffix
+            minutes = int(interval_str)
+    except ValueError as e:
+        raise ValueError(
+            f"Invalid interval '{interval_str}'. Use format like '5m', '1h', or '30'. "
+            f"Error: {e}"
+        ) from e
+
+    # Validate range
+    if minutes < 1:
+        raise ValueError(f"Interval must be at least 1 minute, got {minutes}")
+    if minutes > 1440:  # 24 hours
+        raise ValueError(f"Interval must be at most 1440 minutes (24h), got {minutes}")
+
+    return minutes
 
 
 def setup_logging() -> logging.Logger:
-    """Set up daemon logging."""
+    """Set up daemon logging with rotation.
+
+    Uses RotatingFileHandler to prevent log files from growing indefinitely.
+    - Max size: 10 MB per file
+    - Keeps 3 backup files (daemon.log.1, daemon.log.2, daemon.log.3)
+    """
+    from logging.handlers import RotatingFileHandler
+
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 
     logger = logging.getLogger("powerflow-daemon")
     logger.setLevel(logging.INFO)
 
-    # File handler with rotation-friendly format
-    handler = logging.FileHandler(LOG_FILE)
+    # Clear any existing handlers to avoid duplicates
+    logger.handlers.clear()
+
+    # Rotating file handler: 10MB max, keep 3 backups
+    handler = RotatingFileHandler(
+        LOG_FILE,
+        maxBytes=10 * 1024 * 1024,  # 10 MB
+        backupCount=3,
+        encoding="utf-8",
+    )
     handler.setFormatter(logging.Formatter(
         "%(asctime)s [%(levelname)s] %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S"
@@ -70,8 +110,20 @@ def setup_logging() -> logging.Logger:
 
 
 def save_state(state: dict) -> None:
-    """Save daemon state to file."""
-    STATE_FILE.write_text(json.dumps(state, indent=2, default=str))
+    """Save daemon state to file atomically.
+
+    Uses write-to-temp-then-rename pattern to prevent corruption
+    if the process is interrupted mid-write.
+    """
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    tmp_file = STATE_FILE.with_suffix(".tmp")
+    try:
+        tmp_file.write_text(json.dumps(state, indent=2, default=str))
+        tmp_file.rename(STATE_FILE)  # Atomic on POSIX
+    except OSError:
+        # Clean up temp file if rename fails
+        tmp_file.unlink(missing_ok=True)
+        raise
 
 
 def load_state() -> dict:

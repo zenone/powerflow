@@ -17,6 +17,8 @@ UX Principles:
 import os
 import sys
 
+import requests
+
 from .config import (
     CONFIG_FILE,
     Config,
@@ -24,6 +26,9 @@ from .config import (
 from .notion import NotionClient
 from .pocket import PocketClient
 from .sync import SyncEngine
+from .utils.logging import get_logger
+
+logger = get_logger(__name__)
 
 # =============================================================================
 # OUTPUT HELPERS
@@ -127,50 +132,110 @@ def get_or_prompt_notion_key(config: Config) -> str | None:
     return None
 
 
-def verify_pocket_key(key: str) -> tuple[bool, str]:
+def validate_pocket_key_format(key: str) -> tuple[bool, str]:
+    """Validate Pocket API key format before making API call.
+
+    Returns:
+        (is_valid, error_message)
     """
-    Verify Pocket API key works.
+    if not key:
+        return False, "API key is empty"
+    if len(key) < 20:
+        return False, "API key looks too short. Check you copied the full key."
+    if " " in key or "\n" in key:
+        return False, "API key contains whitespace. Check for extra spaces."
+    return True, ""
+
+
+def validate_notion_key_format(key: str) -> tuple[bool, str]:
+    """Validate Notion API key format before making API call.
+
+    Notion keys start with 'secret_' or 'ntn_'.
+
+    Returns:
+        (is_valid, error_message)
+    """
+    if not key:
+        return False, "API key is empty"
+    if not (key.startswith("secret_") or key.startswith("ntn_")):
+        return False, "Notion API keys should start with 'secret_' or 'ntn_'"
+    if len(key) < 30:
+        return False, "API key looks too short. Check you copied the full key."
+    if " " in key or "\n" in key:
+        return False, "API key contains whitespace. Check for extra spaces."
+    return True, ""
+
+
+def verify_pocket_key(key: str) -> tuple[bool, str]:
+    """Verify Pocket API key works.
 
     Returns:
         (success, error_message)
     """
+    # Validate format first (fast, no network)
+    valid, error = validate_pocket_key_format(key)
+    if not valid:
+        return False, error
+
     try:
         client = PocketClient(key)
-        client.get_recordings(limit=1)
+        client.get_recordings_list(limit=1)
+        logger.debug("Pocket API key verified successfully")
         return True, ""
-    except Exception as e:
-        error = str(e)
-        if "401" in error or "Unauthorized" in error:
+    except requests.exceptions.HTTPError as e:
+        logger.warning("Pocket key verification failed: %s", e)
+        status = e.response.status_code if e.response is not None else None
+        if status == 401:
             return False, "Invalid API key. Please check and try again."
-        elif "403" in error or "Forbidden" in error:
+        elif status == 403:
             return False, "API key doesn't have permission. Create a key with 'Read' access."
-        elif "connection" in error.lower() or "resolve" in error.lower():
-            return False, "Can't connect to Pocket API. Check your internet connection."
         else:
-            return False, f"API error: {error}"
+            return False, f"API error (HTTP {status}): {e}"
+    except requests.exceptions.ConnectionError:
+        logger.warning("Pocket connection failed during verification")
+        return False, "Can't connect to Pocket API. Check your internet connection."
+    except requests.exceptions.Timeout:
+        logger.warning("Pocket verification timed out")
+        return False, "Connection timed out. Check your internet connection."
+    except requests.exceptions.RequestException as e:
+        logger.warning("Pocket verification request error: %s", e)
+        return False, f"Network error: {e}"
 
 
 def verify_notion_key(key: str) -> tuple[bool, str]:
-    """
-    Verify Notion API key works.
+    """Verify Notion API key works.
 
     Returns:
         (success, error_message)
     """
+    # Validate format first (fast, no network)
+    valid, error = validate_notion_key_format(key)
+    if not valid:
+        return False, error
+
     try:
         client = NotionClient(key)
         client.search_databases()
+        logger.debug("Notion API key verified successfully")
         return True, ""
-    except Exception as e:
-        error = str(e)
-        if "401" in error or "Unauthorized" in error:
+    except requests.exceptions.HTTPError as e:
+        logger.warning("Notion key verification failed: %s", e)
+        status = e.response.status_code if e.response is not None else None
+        if status == 401:
             return False, "Invalid API key. Please check and try again."
-        elif "403" in error or "Forbidden" in error:
+        elif status == 403:
             return False, "API key doesn't have permission. Check your integration settings."
-        elif "connection" in error.lower() or "resolve" in error.lower():
-            return False, "Can't connect to Notion API. Check your internet connection."
         else:
-            return False, f"API error: {error}"
+            return False, f"API error (HTTP {status}): {e}"
+    except requests.exceptions.ConnectionError:
+        logger.warning("Notion connection failed during verification")
+        return False, "Can't connect to Notion API. Check your internet connection."
+    except requests.exceptions.Timeout:
+        logger.warning("Notion verification timed out")
+        return False, "Connection timed out. Check your internet connection."
+    except requests.exceptions.RequestException as e:
+        logger.warning("Notion verification request error: %s", e)
+        return False, f"Network error: {e}"
 
 
 # =============================================================================
