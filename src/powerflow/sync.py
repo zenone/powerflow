@@ -1,11 +1,24 @@
-"""Core sync logic for Power-Flow."""
+"""Core sync logic for Power-Flow.
 
+Orchestrates sync between Pocket AI and Notion with:
+- Incremental sync (only new recordings)
+- Batch deduplication
+- Race condition handling (pending state for incomplete AI processing)
+- Comprehensive logging
+"""
+
+from __future__ import annotations
+
+import time
 from datetime import datetime, timezone
 
-from .config import Config
-from .models import SyncResult
-from .notion import NotionClient
-from .pocket import PocketClient
+from powerflow.config import Config
+from powerflow.models import SyncResult
+from powerflow.notion import NotionClient
+from powerflow.pocket import PocketClient
+from powerflow.utils.logging import get_logger, log_sync_result
+
+logger = get_logger(__name__)
 
 
 def parse_last_sync(last_sync: str | None) -> datetime | None:
@@ -36,8 +49,7 @@ class SyncEngine:
         self.config = config
 
     def sync(self, dry_run: bool = False) -> SyncResult:
-        """
-        Sync recordings from Pocket to Notion.
+        """Sync recordings from Pocket to Notion.
 
         Each recording becomes an Inbox item. The user then processes/triages
         it into a task, note, project, or archives it.
@@ -51,10 +63,15 @@ class SyncEngine:
         Returns:
             SyncResult with counts and any errors
         """
+        start_time = time.monotonic()
         result = SyncResult()
 
+        logger.info("Starting sync%s", " (dry run)" if dry_run else "")
+
         if not self.config.is_configured:
-            result.errors.append("Not configured. Run 'powerflow setup' first.")
+            error_msg = "Not configured. Run 'powerflow setup' first."
+            logger.error(error_msg)
+            result.errors.append(error_msg)
             return result
 
         database_id = self.config.notion.database_id
@@ -63,16 +80,25 @@ class SyncEngine:
 
         # Get last sync timestamp for incremental sync
         last_sync = parse_last_sync(self.config.pocket.last_sync)
+        if last_sync:
+            logger.debug("Incremental sync since %s", last_sync.isoformat())
+        else:
+            logger.debug("Full sync (no previous sync timestamp)")
 
         # Fetch recordings since last sync (or all if first sync)
         try:
             recordings = self.pocket.fetch_recordings(since=last_sync)
         except Exception as e:
-            result.errors.append(f"Failed to fetch from Pocket: {e}")
+            error_msg = f"Failed to fetch from Pocket: {e}"
+            logger.error(error_msg)
+            result.errors.append(error_msg)
             return result
 
         if not recordings:
+            logger.info("No new recordings to sync")
             return result
+
+        logger.info("Found %d recordings to process", len(recordings))
 
         # Batch check which recordings already exist
         pocket_ids = [rec.pocket_id for rec in recordings]
@@ -80,8 +106,11 @@ class SyncEngine:
             existing_ids = self.notion.batch_check_existing_pocket_ids(
                 database_id, pocket_ids, pocket_id_prop
             )
+            logger.debug("Found %d existing recordings in Notion", len(existing_ids))
         except Exception as e:
-            result.errors.append(f"Failed to check existing items: {e}")
+            error_msg = f"Failed to check existing items: {e}"
+            logger.error(error_msg)
+            result.errors.append(error_msg)
             return result
 
         # Process each recording
@@ -89,6 +118,7 @@ class SyncEngine:
             try:
                 # Check for duplicate using batch result
                 if recording.pocket_id in existing_ids:
+                    logger.debug("Skipping duplicate: %s", recording.display_title)
                     result.skipped += 1
                     continue
 
@@ -96,6 +126,10 @@ class SyncEngine:
                 # This prevents syncing recordings that Pocket is still processing
                 # They will be picked up on the next sync cycle
                 if not recording.is_summary_complete:
+                    logger.debug(
+                        "Skipping pending (AI not complete): %s",
+                        recording.display_title,
+                    )
                     result.pending += 1
                     continue
 
@@ -105,16 +139,30 @@ class SyncEngine:
                     children = recording.to_notion_children()
                     icon = recording.get_icon()
                     self.notion.create_page(database_id, properties, children, icon)
+                    logger.debug("Created page: %s", recording.display_title)
 
                 result.created += 1
 
             except Exception as e:
                 result.failed += 1
-                result.errors.append(f"Failed to sync '{recording.display_title}': {e}")
+                error_msg = f"Failed to sync '{recording.display_title}': {e}"
+                logger.warning(error_msg)
+                result.errors.append(error_msg)
 
         # Update last sync timestamp
         if not dry_run and (result.created > 0 or result.skipped > 0):
             self.config.update_last_sync()
+            logger.debug("Updated last_sync timestamp")
+
+        duration_s = time.monotonic() - start_time
+        log_sync_result(
+            logger,
+            created=result.created,
+            skipped=result.skipped,
+            pending=result.pending,
+            failed=result.failed,
+            duration_s=duration_s,
+        )
 
         return result
 
@@ -124,6 +172,9 @@ class SyncEngine:
         Only counts recordings that:
         1. Don't already exist in Notion (dedup check)
         2. Have completed AI processing (summary check)
+
+        Returns:
+            Count of ready-to-sync recordings, or 0 on error
         """
         if not self.config.is_configured:
             return 0
@@ -135,7 +186,8 @@ class SyncEngine:
 
         try:
             recordings = self.pocket.fetch_recordings(since=last_sync)
-        except Exception:
+        except Exception as e:
+            logger.warning("Failed to fetch recordings for pending count: %s", e)
             return 0
 
         if not recordings:
@@ -147,8 +199,10 @@ class SyncEngine:
             existing_ids = self.notion.batch_check_existing_pocket_ids(
                 database_id, pocket_ids, pocket_id_prop
             )
-        except Exception:
-            return len(recordings)  # Assume all are new if check fails
+        except Exception as e:
+            # Return -1 to indicate unknown state rather than misleading count
+            logger.warning("Failed to check existing IDs for pending count: %s", e)
+            return -1
 
         # Count only recordings that are both new AND have completed AI processing
         ready_count = sum(

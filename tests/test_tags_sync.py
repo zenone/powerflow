@@ -1,6 +1,5 @@
 """Tests for tags synchronization."""
 
-import pytest
 
 from powerflow.models import Recording
 
@@ -21,7 +20,7 @@ class TestTagsSync:
             "tags": "Tags",
         }
         props = rec.to_notion_properties(property_map)
-        
+
         assert "Tags" in props
         assert props["Tags"]["multi_select"] == [
             {"name": "work"},
@@ -42,7 +41,7 @@ class TestTagsSync:
             "tags": "Tags",
         }
         props = rec.to_notion_properties(property_map)
-        
+
         # Tags property should not be included if empty
         assert "Tags" not in props
 
@@ -59,7 +58,7 @@ class TestTagsSync:
             # No tags mapping
         }
         props = rec.to_notion_properties(property_map)
-        
+
         # Tags should not appear in props
         assert "Tags" not in props
         assert "tags" not in props
@@ -77,11 +76,11 @@ class TestTagsSync:
             "tags": "Tags",
         }
         props = rec.to_notion_properties(property_map)
-        
+
         # Should deduplicate case-insensitively, keeping first occurrence's casing
         tags = props["Tags"]["multi_select"]
         tag_names = [t["name"] for t in tags]
-        
+
         # Should have exactly 2 unique tags
         assert len(tags) == 2
         # First occurrence of each should be preserved

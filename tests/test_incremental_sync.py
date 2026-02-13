@@ -1,8 +1,6 @@
 """Tests for incremental sync functionality."""
 
-from datetime import datetime, timezone
 from unittest.mock import MagicMock
-import pytest
 
 from powerflow.models import Recording
 from powerflow.sync import SyncEngine
@@ -28,10 +26,10 @@ class TestIncrementalSync:
         # Should have called fetch_recordings
         mock_pocket.fetch_recordings.assert_called_once()
         call_args = mock_pocket.fetch_recordings.call_args
-        
+
         # Get the 'since' kwarg
         since = call_args.kwargs.get("since")
-        
+
         assert since is not None, "since should be passed to fetch_recordings"
         assert since.tzinfo is not None, "since should be timezone-aware"
         assert since.year == 2026
@@ -83,7 +81,8 @@ class TestIncrementalSync:
         """Should fetch all recordings when last_sync is None."""
         mock_pocket = MagicMock()
         mock_pocket.fetch_recordings.return_value = [
-            Recording(id="1", title="Old Recording", summary="Summary 1"),  # Summary makes it complete
+            # Summary makes recordings complete for sync
+            Recording(id="1", title="Old Recording", summary="Summary 1"),
             Recording(id="2", title="New Recording", summary="Summary 2"),
         ]
         mock_notion = MagicMock()
@@ -100,7 +99,7 @@ class TestIncrementalSync:
 
         # Should sync all recordings
         assert result.created == 2
-        
+
         # Should have called with since=None
         mock_pocket.fetch_recordings.assert_called_once()
         call_args = mock_pocket.fetch_recordings.call_args

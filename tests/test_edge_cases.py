@@ -1,13 +1,11 @@
 """Edge case tests for Power-Flow robustness."""
 
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch
-import pytest
+from unittest.mock import MagicMock
 
-from powerflow.models import ActionItem, Recording, SyncResult
-from powerflow.sync import SyncEngine
+from powerflow.models import Recording
 from powerflow.pocket import PocketClient
-from powerflow.notion import NotionClient
+from powerflow.sync import SyncEngine
 
 
 class TestEmptyData:
@@ -75,7 +73,7 @@ class TestMalformedData:
             tags=["", "valid", "  ", "also_valid"],
         )
         props = rec.to_notion_properties({"title": "Name", "pocket_id": "ID", "tags": "Tags"})
-        
+
         tag_names = [t["name"] for t in props["Tags"]["multi_select"]]
         assert "" not in tag_names
         assert "valid" in tag_names
@@ -84,14 +82,14 @@ class TestMalformedData:
     def test_pocket_client_handles_missing_summarizations(self):
         """Should handle recordings without summarizations gracefully."""
         client = PocketClient("fake_key")
-        
+
         # Recording with no summarizations
         recording_data = {
             "id": "123",
             "title": "Test",
             "createdAt": "2026-02-06T10:00:00Z",
         }
-        
+
         rec = client._parse_recording(recording_data)
         assert rec is not None
         assert rec.id == "123"
@@ -100,7 +98,7 @@ class TestMalformedData:
     def test_pocket_client_handles_empty_actions_array(self):
         """Should handle empty actions array."""
         client = PocketClient("fake_key")
-        
+
         recording_data = {
             "id": "123",
             "title": "Test",
@@ -110,7 +108,7 @@ class TestMalformedData:
                 }
             }
         }
-        
+
         rec = client._parse_recording(recording_data)
         assert rec is not None
         assert rec.action_items == []
@@ -184,7 +182,7 @@ class TestAPIErrors:
         ]
         mock_notion = MagicMock()
         mock_notion.batch_check_existing_pocket_ids.return_value = set()
-        
+
         # Second item fails to create
         call_count = [0]
         def create_page_side_effect(*args, **kwargs):
@@ -192,9 +190,9 @@ class TestAPIErrors:
             if call_count[0] == 2:
                 raise Exception("Notion error on item 2")
             return {}
-        
+
         mock_notion.create_page.side_effect = create_page_side_effect
-        
+
         mock_config = MagicMock()
         mock_config.is_configured = True
         mock_config.notion.database_id = "db123"
@@ -242,7 +240,7 @@ class TestTimezoneHandling:
     def test_incremental_sync_compares_utc_correctly(self):
         """Incremental sync should handle timezone-aware comparisons."""
         client = PocketClient("fake_key")
-        
+
         # Mock API methods
         client.get_recordings_list = MagicMock(return_value=[
             {"id": "1", "createdAt": "2026-02-06T10:00:00Z"},  # Before cutoff
@@ -257,10 +255,10 @@ class TestTimezoneHandling:
                 }
             }
         })
-        
+
         since = datetime(2026, 2, 6, 12, 0, 0, tzinfo=timezone.utc)
         recordings = client.fetch_recordings(since=since)
-        
+
         # Should only return recordings after the cutoff
         assert len(recordings) == 1
         assert recordings[0].title == "New Recording"

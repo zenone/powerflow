@@ -955,3 +955,99 @@ Returns `len(recordings)` when dedup check fails — could report false positive
 with timeout(seconds=30):
     response = api_call()
 ```
+
+---
+
+## Reliability Utilities Implementation (2026-02-14)
+
+### Pattern: Centralized Reliability Infrastructure
+
+**Problem**: After auditing 5 modules, found same gaps everywhere:
+- No retry logic
+- No rate limiting
+- No timeouts
+- Minimal logging
+
+**Solution**: Create shared utilities module instead of fixing each module individually.
+
+```python
+# utils/reliability.py
+@dataclass
+class RetryConfig:
+    max_attempts: int = 3
+    base_delay: float = 1.0
+    max_delay: float = 60.0
+    exponential_base: float = 2.0
+    retriable_status_codes: set[int] = field(
+        default_factory=lambda: {429, 500, 502, 503, 504}
+    )
+
+def with_retry(max_attempts=3, base_delay=1.0, ...):
+    """Decorator for automatic retry with exponential backoff."""
+    ...
+
+class RateLimiter:
+    """Thread-safe token bucket rate limiter."""
+    ...
+```
+
+**Benefits**:
+- Single implementation to maintain
+- Consistent behavior across all API clients
+- Easy to test in isolation
+- Configuration is explicit and documented
+
+### Pattern: Singleton Rate Limiters
+
+**Problem**: Multiple instances of API clients could each have their own rate limiter, allowing combined rate to exceed limits.
+
+**Solution**: Singleton rate limiters per API:
+```python
+_notion_limiter: RateLimiter | None = None
+
+def get_notion_limiter() -> RateLimiter:
+    global _notion_limiter
+    if _notion_limiter is None:
+        _notion_limiter = RateLimiter(calls_per_second=3.0)
+    return _notion_limiter
+```
+
+### Pattern: Structured Logging Helpers
+
+**Problem**: Log messages inconsistent across modules, hard to grep/analyze.
+
+**Solution**: Helper functions with consistent format:
+```python
+def log_api_call(logger, method, url, status_code=None, duration_ms=None, error=None):
+    """Log API call with consistent format."""
+    display_url = url[:80] + "..." if len(url) > 80 else url
+    if error:
+        logger.warning("API %s %s failed: %s", method, display_url, error)
+    elif status_code:
+        duration_str = f" ({duration_ms:.0f}ms)" if duration_ms else ""
+        logger.log(level, "API %s %s -> %d%s", method, display_url, status_code, duration_str)
+
+def log_sync_result(logger, created=0, skipped=0, pending=0, failed=0, duration_s=None):
+    """Log sync results with consistent format."""
+    ...
+```
+
+### Key Decisions
+
+1. **No external dependencies**: Implemented retry and rate limiting without tenacity/ratelimit to keep dependencies minimal.
+
+2. **Timeout as tuple**: Requests library accepts `timeout=(connect, read)`. Default: `(10, 30)` — short connect, longer read.
+
+3. **Retry-After header**: For 429 responses, check `Retry-After` header and use it instead of calculated backoff.
+
+4. **Error accumulation**: Don't stop on first error in loops. Log and continue, report all errors at end.
+
+### Test Coverage
+
+Added 29 tests for reliability utilities:
+- RetryConfig defaults and custom values
+- is_retriable_error for various error types
+- calculate_backoff exponential behavior
+- with_retry decorator (success, retry, exhaust, non-retriable)
+- RateLimiter (burst, refill, blocking, timeout, thread safety)
+- with_timeout (values, tuple format, context manager)

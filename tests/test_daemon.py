@@ -1,12 +1,11 @@
 """Tests for daemon functionality."""
 
-import pytest
 
 from powerflow.daemon import (
-    parse_interval,
     DEFAULT_INTERVAL_MINUTES,
-    RETRY_DELAY_SECONDS,
     MAX_RETRIES,
+    RETRY_DELAY_SECONDS,
+    parse_interval,
     send_notification,
 )
 

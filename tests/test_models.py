@@ -1,6 +1,5 @@
 """Tests for data models."""
 
-import pytest
 from datetime import datetime, timezone
 
 from powerflow.models import ActionItem, Recording, SyncResult
@@ -89,16 +88,16 @@ class TestRecording:
             "tags": "Tags",
         }
         props = rec.to_notion_properties(property_map)
-        
+
         assert "Name" in props
         assert props["Name"]["title"][0]["text"]["content"] == "Test Recording"
-        
+
         assert "Inbox ID" in props
         assert props["Inbox ID"]["rich_text"][0]["text"]["content"] == "pocket:recording:abc123"
-        
+
         assert "Source" in props
         assert props["Source"]["url"] == "https://heypocket.com/recordings/abc123"
-        
+
         assert "Tags" in props
         assert len(props["Tags"]["multi_select"]) == 2
 
@@ -109,12 +108,12 @@ class TestRecording:
             summary="### Heading\n- **Bold** item\n- Regular item",
         )
         children = rec.to_notion_children()
-        
+
         # Should have parsed markdown blocks
         heading = next((c for c in children if c.get("type") == "heading_3"), None)
         assert heading is not None
         assert heading["heading_3"]["rich_text"][0]["text"]["content"] == "Heading"
-        
+
         # Should have bullet items
         bullets = [c for c in children if c.get("type") == "bulleted_list_item"]
         assert len(bullets) >= 2
@@ -129,7 +128,7 @@ class TestRecording:
             ],
         )
         children = rec.to_notion_children()
-        
+
         # Should have to-do blocks
         todos = [c for c in children if c.get("type") == "to_do"]
         assert len(todos) == 2
@@ -142,7 +141,7 @@ class TestRecording:
         )
         property_map = {"title": "Name", "pocket_id": "ID", "tags": "Tags"}
         props = rec.to_notion_properties(property_map)
-        
+
         # Should deduplicate case-insensitively
         tags = props["Tags"]["multi_select"]
         assert len(tags) == 2  # work + meeting

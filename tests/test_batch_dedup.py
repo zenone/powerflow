@@ -1,8 +1,6 @@
 """Tests for batch deduplication (v0.3)."""
 
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import MagicMock
 
 from powerflow.notion import NotionClient
 
@@ -72,11 +70,11 @@ class TestBatchDedup:
         # Verify the filter structure
         call_args = client._request.call_args
         payload = call_args[1]["json"]
-        
+
         assert "filter" in payload
         assert "or" in payload["filter"]
         assert len(payload["filter"]["or"]) == 2
-        
+
         # Each OR clause should be a rich_text equals filter
         for clause in payload["filter"]["or"]:
             assert clause["property"] == "Inbox ID"
@@ -87,12 +85,12 @@ class TestBatchDedup:
         """Lists >100 items are chunked into multiple queries."""
         client = NotionClient("fake_key")
         call_count = 0
-        
+
         def mock_request(*args, **kwargs):
             nonlocal call_count
             call_count += 1
             return {"results": [], "has_more": False}
-        
+
         client._request = mock_request
 
         # 150 items should result in 2 queries (100 + 50)

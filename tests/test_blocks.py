@@ -1,20 +1,18 @@
 """Tests for Notion block builders."""
 
-import pytest
 
 from powerflow.blocks import (
-    safe_text,
-    format_duration,
-    create_rich_text,
+    create_bullet,
     create_callout,
     create_divider,
-    create_toggle,
-    create_bullet,
+    create_heading,
     create_paragraph,
     create_quote,
-    create_heading,
+    create_rich_text,
+    create_toggle,
+    format_duration,
     get_priority_style,
-    PRIORITY_STYLES,
+    safe_text,
 )
 
 
@@ -114,7 +112,7 @@ class TestCreateToggle:
     def test_toggle_with_children(self):
         children = [create_paragraph("Child content")]
         result = create_toggle("Click to expand", children)
-        
+
         assert result["type"] == "toggle"
         assert result["toggle"]["rich_text"][0]["text"]["content"] == "Click to expand"
         assert len(result["toggle"]["children"]) == 1
