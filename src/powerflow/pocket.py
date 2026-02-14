@@ -64,7 +64,7 @@ def parse_datetime(dt_str: str | None) -> datetime | None:
 class PocketClient:
     """Client for Pocket AI API with reliability features."""
 
-    def __init__(self, api_key: str, timeout: float = 30.0):
+    def __init__(self, api_key: str, timeout: float = 30.0) -> None:
         """Initialize Pocket client.
 
         Args:

@@ -12,6 +12,8 @@ from __future__ import annotations
 import time
 from datetime import datetime, timezone
 
+import requests
+
 from powerflow.config import Config
 from powerflow.models import SyncResult
 from powerflow.notion import NotionClient
@@ -43,7 +45,7 @@ class SyncEngine:
         pocket: PocketClient,
         notion: NotionClient,
         config: Config,
-    ):
+    ) -> None:
         self.pocket = pocket
         self.notion = notion
         self.config = config
@@ -88,7 +90,7 @@ class SyncEngine:
         # Fetch recordings since last sync (or all if first sync)
         try:
             recordings = self.pocket.fetch_recordings(since=last_sync)
-        except Exception as e:
+        except requests.RequestException as e:
             error_msg = f"Failed to fetch from Pocket: {e}"
             logger.error(error_msg)
             result.errors.append(error_msg)
@@ -107,7 +109,7 @@ class SyncEngine:
                 database_id, pocket_ids, pocket_id_prop
             )
             logger.debug("Found %d existing recordings in Notion", len(existing_ids))
-        except Exception as e:
+        except requests.RequestException as e:
             error_msg = f"Failed to check existing items: {e}"
             logger.error(error_msg)
             result.errors.append(error_msg)
@@ -143,7 +145,7 @@ class SyncEngine:
 
                 result.created += 1
 
-            except Exception as e:
+            except (requests.RequestException, ValueError, KeyError) as e:
                 result.failed += 1
                 error_msg = f"Failed to sync '{recording.display_title}': {e}"
                 logger.warning(error_msg)
@@ -186,7 +188,7 @@ class SyncEngine:
 
         try:
             recordings = self.pocket.fetch_recordings(since=last_sync)
-        except Exception as e:
+        except requests.RequestException as e:
             logger.warning("Failed to fetch recordings for pending count: %s", e)
             return 0
 
@@ -199,7 +201,7 @@ class SyncEngine:
             existing_ids = self.notion.batch_check_existing_pocket_ids(
                 database_id, pocket_ids, pocket_id_prop
             )
-        except Exception as e:
+        except requests.RequestException as e:
             # Return -1 to indicate unknown state rather than misleading count
             logger.warning("Failed to check existing IDs for pending count: %s", e)
             return -1

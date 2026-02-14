@@ -790,7 +790,7 @@ def main(args: list[str] | None = None) -> int:
         return 1
 
 
-def print_usage():
+def print_usage() -> None:
     """Print usage information."""
     print("""
 Power-Flow: Sync Pocket AI recordings to Notion Inbox

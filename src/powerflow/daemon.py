@@ -192,7 +192,7 @@ def remove_pid() -> None:
 class PowerFlowDaemon:
     """Background sync daemon."""
 
-    def __init__(self, interval_minutes: int = DEFAULT_INTERVAL_MINUTES):
+    def __init__(self, interval_minutes: int = DEFAULT_INTERVAL_MINUTES) -> None:
         self.interval_minutes = interval_minutes
         self.running = False
         self.logger = setup_logging()
@@ -201,7 +201,7 @@ class PowerFlowDaemon:
         signal.signal(signal.SIGTERM, self._handle_shutdown)
         signal.signal(signal.SIGINT, self._handle_shutdown)
 
-    def _handle_shutdown(self, signum, frame):
+    def _handle_shutdown(self, signum: int, frame) -> None:  # frame type is complex, leave as Any
         """Handle shutdown signal gracefully."""
         self.logger.info(f"Received signal {signum}, shutting down...")
         self.running = False

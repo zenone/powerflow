@@ -40,7 +40,7 @@ NOTION_RETRY_CONFIG = RetryConfig(
 class NotionClient:
     """Client for Notion API with reliability features."""
 
-    def __init__(self, api_key: str, timeout: float = 30.0):
+    def __init__(self, api_key: str, timeout: float = 30.0) -> None:
         """Initialize Notion client.
 
         Args:

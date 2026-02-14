@@ -3,6 +3,8 @@
 from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
+import requests
+
 from powerflow.models import Recording
 from powerflow.pocket import PocketClient
 from powerflow.sync import SyncEngine
@@ -139,7 +141,7 @@ class TestAPIErrors:
     def test_sync_handles_pocket_api_failure(self):
         """Sync should handle Pocket API errors gracefully."""
         mock_pocket = MagicMock()
-        mock_pocket.fetch_recordings.side_effect = Exception("Connection refused")
+        mock_pocket.fetch_recordings.side_effect = requests.RequestException("Connection refused")
         mock_notion = MagicMock()
         mock_config = MagicMock()
         mock_config.is_configured = True
@@ -160,7 +162,9 @@ class TestAPIErrors:
             Recording(id="1", title="Test")
         ]
         mock_notion = MagicMock()
-        mock_notion.batch_check_existing_pocket_ids.side_effect = Exception("Rate limited")
+        mock_notion.batch_check_existing_pocket_ids.side_effect = (
+            requests.RequestException("Rate limited")
+        )
         mock_config = MagicMock()
         mock_config.is_configured = True
         mock_config.notion.database_id = "db123"
@@ -188,7 +192,7 @@ class TestAPIErrors:
         def create_page_side_effect(*args, **kwargs):
             call_count[0] += 1
             if call_count[0] == 2:
-                raise Exception("Notion error on item 2")
+                raise requests.RequestException("Notion error on item 2")
             return {}
 
         mock_notion.create_page.side_effect = create_page_side_effect
