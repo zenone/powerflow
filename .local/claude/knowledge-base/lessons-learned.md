@@ -1051,3 +1051,96 @@ Added 29 tests for reliability utilities:
 - with_retry decorator (success, retry, exhaust, non-retriable)
 - RateLimiter (burst, refill, blocking, timeout, thread safety)
 - with_timeout (values, tuple format, context manager)
+
+---
+
+## Self-Healing Audit Pattern (2026-02-14)
+
+### Version Drift Detection
+
+**Issue**: Version numbers drifted across files:
+- `pyproject.toml`: 0.3.0
+- `__init__.py`: 0.4.0
+- State docs: 0.5.0
+
+**Prevention**: Single source of truth. Consider:
+```python
+# In __init__.py
+from importlib.metadata import version
+__version__ = version("powerflow")
+```
+
+Or use `hatch-vcs` to derive version from git tags.
+
+### API Keys in Config Files
+
+**Issue**: launchd plist contained plaintext API keys.
+
+**Risk**: Any process can read `~/Library/LaunchAgents/*.plist`.
+
+**Solutions** (in order of security):
+1. **macOS Keychain** — Most secure, requires code changes
+2. **Wrapper script** — Script sources ~/.zshrc, plist calls script
+3. **Environment file** — Dedicated .env file with restricted permissions
+
+**Never**: Hardcode keys in version-controlled or world-readable files.
+
+### CI Template Drift
+
+**Issue**: GitHub workflows were Node.js templates, not Python.
+
+**Prevention**: When creating from templates, immediately customize for the project. Don't leave placeholders.
+
+---
+
+## Secure launchd API Keys Pattern (2026-02-14)
+
+### Problem
+launchd doesn't source shell profiles (.zshrc), so you can't just put keys there.
+Hardcoding keys in plist files is insecure (world-readable).
+
+### Solution: Wrapper with Explicit Source
+
+**1. Create secure env file:**
+```bash
+mkdir -p ~/.config/env
+chmod 700 ~/.config/env
+
+cat > ~/.config/env/api-keys.sh << 'KEYS'
+export POCKET_API_KEY="pk_xxx"
+export NOTION_API_KEY="ntn_xxx"
+KEYS
+
+chmod 600 ~/.config/env/api-keys.sh
+```
+
+**2. Update plist to source it:**
+```xml
+<key>ProgramArguments</key>
+<array>
+    <string>/bin/zsh</string>
+    <string>-c</string>
+    <string>source ~/.config/env/api-keys.sh &amp;&amp; /path/to/command</string>
+</array>
+
+<key>EnvironmentVariables</key>
+<dict>
+    <key>HOME</key>
+    <string>/Users/username</string>
+</dict>
+```
+
+**Key points:**
+- `HOME` must be set for `~` expansion to work
+- Use `&amp;&amp;` (XML-escaped `&&`) to chain commands
+- `-c` flag runs inline command
+- `-l` flag alone doesn't reliably source .zshrc in launchd context
+
+### Why `-l` Doesn't Work Reliably
+
+The `-l` (login shell) flag is supposed to source profile files, but in launchd:
+- No controlling terminal
+- Different execution context
+- Profile sourcing can fail silently
+
+Explicit `source` is more reliable.

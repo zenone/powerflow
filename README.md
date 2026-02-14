@@ -70,6 +70,9 @@ Each recording becomes a beautifully formatted Notion page:
 - **🏷️ Tags sync** — Pocket tags → Notion multi-select
 - **⚡ Batch operations** — Efficient API usage (not N+1 queries)
 - **🔒 Secure** — API keys stay local, never leave your machine
+- **🔁 Automatic retry** — Exponential backoff on transient failures (network, rate limits)
+- **⏱️ Rate limiting** — Respects API limits (Notion: 3 req/sec, Pocket: 5 req/sec)
+- **📋 Structured logging** — Debug with `~/.powerflow/daemon.log` (auto-rotated)
 
 ---
 

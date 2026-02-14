@@ -3,6 +3,9 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 
+# Constants
+TRANSCRIPT_PREVIEW_LENGTH = 500  # Characters to show in transcript preview
+
 # Tag to emoji mapping for Notion page icons
 TAG_EMOJI_MAP = {
     "work": "💼",
@@ -281,9 +284,9 @@ class Recording:
 
         # Transcript toggle (nested, collapsed)
         if self.transcript:
-            # Show first 500 chars as preview
-            transcript_preview = self.transcript[:500]
-            if len(self.transcript) > 500:
+            # Show first N chars as preview
+            transcript_preview = self.transcript[:TRANSCRIPT_PREVIEW_LENGTH]
+            if len(self.transcript) > TRANSCRIPT_PREVIEW_LENGTH:
                 transcript_preview += "..."
             source_children.append(
                 create_toggle("📝 Full Transcript", [
