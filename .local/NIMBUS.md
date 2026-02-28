@@ -1,8 +1,39 @@
-# OpenClaw Project Guidance
+# Nimbus Project Guidance — Powerflow
 
 Actions over advice. Read files, make minimal diffs, verify, report.
 
 **Continuous Improvement**: See `.local/claude/rules/continuous-improvement.md` for self-healing and self-improvement directives.
+
+---
+
+## Audit Gates (MANDATORY)
+
+Powerflow has a living audit gate registry: `.local/AUDIT-GATES.md`
+
+**Rule:** When you commit a new design decision or invariant, you MUST add a gate in the same commit.
+
+Gate format:
+```
+## D-PF-NNN — Short description
+**Invariant:** What must always be true and why.
+**Command:**
+\`\`\`bash
+<bash command that outputs violations only; empty = pass>
+\`\`\`
+**Pass:** zero output
+```
+
+Run all gates:
+```bash
+bash ~/Dropbox/.nimbus-shared/scripts/audit-gates-check.sh ~/Code/powerflow
+```
+
+**Current gates (6):** D-PF-001 through D-PF-006 — all passing.
+
+Examples of things that need a gate:
+- New write path to Notion → gate that only allowed callers exist
+- New env var required → gate that no hardcoded fallback exists in source
+- New dedup mechanism → gate that old bypass patterns don't appear
 
 ---
 
@@ -13,6 +44,7 @@ Actions over advice. Read files, make minimal diffs, verify, report.
 2. Read .local/claude/state/current-state.md          ← current focus
 3. Read .local/claude/knowledge-base/lessons-learned.md  ← avoid repeating mistakes
 4. Read PROJECT.md (if exists)                        ← project context
+5. Run audit-gates-check.sh                           ← verify invariants before touching code
 ```
 
 If `PROJECT.md` doesn't exist → create from `docs/PROJECT.md.template`
