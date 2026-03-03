@@ -6,6 +6,44 @@ Actions over advice. Read files, make minimal diffs, verify, report.
 
 ---
 
+## 🏆 Quality Framework (NON-NEGOTIABLE)
+
+Every piece of Powerflow work — feature, fix, refactor, script — must pass through all three lenses:
+
+### 1. DESIGN_PRINCIPLES.md
+```
+~/Dropbox/.nimbus-shared/docs/DESIGN_PRINCIPLES.md
+```
+20 core principles that govern every architectural and structural decision. Read before planning any change.
+
+### 2. BRANCHING.md — Machine Role Assignments
+```
+~/Dropbox/.nimbus-shared/docs/BRANCHING.md
+~/code/tools/nimbus/.local/BRANCHING.md
+```
+- **iMac = Developer** → writes code, commits to `dev`/`feature/*`
+- **MBP = Tester** → validates, runs tests, opens PR to `main`
+- iMac MUST NOT open or merge `dev→main` PRs directly
+- After every iMac push to dev: `dev-push-handoff.sh --issue NNN --summary "..."`
+
+### 3. code-review-systematic.md — 8 Quality Dimensions
+```
+~/Dropbox/.nimbus-shared/prompts/code-review-systematic.md
+```
+Review every change across all 8 dimensions before marking done:
+1. Code quality & best practices
+2. Performance implications
+3. Security vulnerabilities
+4. Test coverage
+5. Documentation completeness
+6. Architectural concerns
+7. Maintainability
+8. Scope & footprint (touch only what's required)
+
+**No Powerflow work ships without passing all three.**
+
+---
+
 ## Audit Gates (MANDATORY)
 
 Powerflow has a living audit gate registry: `.local/AUDIT-GATES.md`
@@ -44,7 +82,9 @@ Examples of things that need a gate:
 2. Read .local/claude/state/current-state.md          ← current focus
 3. Read .local/claude/knowledge-base/lessons-learned.md  ← avoid repeating mistakes
 4. Read PROJECT.md (if exists)                        ← project context
-5. Run audit-gates-check.sh                           ← verify invariants before touching code
+5. Read DESIGN_PRINCIPLES.md                          ← architectural lens
+6. Confirm machine role (iMac=dev, MBP=test)          ← branching rules
+7. Run audit-gates-check.sh                           ← verify invariants before touching code
 ```
 
 If `PROJECT.md` doesn't exist → create from `docs/PROJECT.md.template`
@@ -115,7 +155,7 @@ output
 
 ---
 
-## OpenClaw-Specific
+## Nimbus-Specific
 
 **Spawn sub-agents** for research-heavy tasks:
 ```
